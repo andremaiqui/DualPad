@@ -46,7 +46,7 @@ As ações podem ser alteradas nos menus de cada botão.
 
 ## Barra de menus
 
-Ative **Segundo plano** para manter o DualPad disponível pelo ícone na barra de menus. Fechar a janela não encerra o app; escolha **Sair do DualPad** no menu para encerrar.
+Ative **Segundo plano** para fechar a janela principal, ocultar o app da Dock e manter os controles disponíveis pelo ícone na barra de menus. Escolha **Abrir DualPad** para reabrir a janela ou **Sair do DualPad** para encerrar o app.
 
 ## Releases e versões
 
