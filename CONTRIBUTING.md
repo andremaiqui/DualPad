@@ -13,4 +13,4 @@ Escreva o resumo no imperativo e explique a alteração no corpo quando o títul
 
 ## Pull requests e releases
 
-Pull requests e atualizações na branch `main` são compilados pelo GitHub Actions. O Release Please agrupa commits desde o último release, atualiza o changelog e abre uma pull request com a próxima versão. Integrar essa pull request cria uma release `DualPad vX.Y.Z` com as notas e o ZIP do app para macOS.
+Toda mudança deve entrar por uma pull request com título Conventional Commit; isso permite ao Release Please identificar as melhorias integradas. O GitHub Actions compila cada pull request. Depois que ela entra em `main`, o Release Please atualiza o changelog e abre uma pull request com a próxima versão. Integrar essa pull request cria uma release `DualPad vX.Y.Z` com notas agrupadas por melhoria e o ZIP do app para macOS.

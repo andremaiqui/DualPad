@@ -15,6 +15,9 @@ final class EventPoster {
 
     // Posição "virtual" para não perder movimentos menores que 1 pixel.
     private var tracked: CGPoint?
+    private var lastCursorSync: TimeInterval = 0
+    private var displayBounds = CGRect.null
+    private var lastDisplayBoundsCheck: TimeInterval = 0
 
     // Controle de duplo clique.
     private var lastClickTime: TimeInterval = 0
@@ -32,13 +35,18 @@ final class EventPoster {
     func moveCursor(dx: Double, dy: Double) {
         guard dx != 0 || dy != 0 else { return }
 
-        let real = cursor
-        if let tracked, hypot(real.x - tracked.x, real.y - tracked.y) <= 2 {
-            // Keep the fractional position accumulated by the controller.
-        } else {
-            tracked = real // o usuário mexeu o cursor por outro meio
+        let now = ProcessInfo.processInfo.systemUptime
+        if tracked == nil || now - lastCursorSync >= 1.0 / 30.0 {
+            let real = cursor
+            if let tracked, hypot(real.x - tracked.x, real.y - tracked.y) <= 2 {
+                // Keep the fractional position accumulated by the controller.
+            } else {
+                tracked = real // o usuário mexeu o cursor por outro meio
+            }
+            lastCursorSync = now
         }
-        var p = tracked ?? real
+
+        guard var p = tracked else { return }
         p.x += dx
         p.y += dy
         p = clamp(p)
@@ -129,17 +137,29 @@ final class EventPoster {
     }
 
     private func clamp(_ p: CGPoint) -> CGPoint {
+        let now = ProcessInfo.processInfo.systemUptime
+        if displayBounds.isNull || now - lastDisplayBoundsCheck >= 2 {
+            refreshDisplayBounds(at: now)
+        }
+        guard !displayBounds.isNull else { return p }
+
+        return CGPoint(x: min(max(p.x, displayBounds.minX), displayBounds.maxX - 1),
+                       y: min(max(p.y, displayBounds.minY), displayBounds.maxY - 1))
+    }
+
+    private func refreshDisplayBounds(at time: TimeInterval) {
+        lastDisplayBoundsCheck = time
+
         var count: UInt32 = 0
-        CGGetActiveDisplayList(0, nil, &count)
-        guard count > 0 else { return p }
+        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return }
+
         var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
-        CGGetActiveDisplayList(count, &ids, &count)
+        guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return }
 
-        var rect = CGRect.null
-        for id in ids { rect = rect.union(CGDisplayBounds(id)) }
-        guard !rect.isNull else { return p }
-
-        return CGPoint(x: min(max(p.x, rect.minX), rect.maxX - 1),
-                       y: min(max(p.y, rect.minY), rect.maxY - 1))
+        var bounds = CGRect.null
+        for id in ids {
+            bounds = bounds.union(CGDisplayBounds(id))
+        }
+        displayBounds = bounds
     }
 }
