@@ -1,10 +1,36 @@
 <div align="center">
   <img src="DualPad.png" width="200" alt="Ícone oficial do DualPad" />
   <h1>DualPad</h1>
-  <p>Use seu DualSense como mouse, scroll e teclado no macOS.</p>
 </div>
 
-O DualPad usa SwiftUI para a interface, GameController para receber os controles e eventos de Acessibilidade do macOS para operar mouse e teclado.
+## Contribuições
+
+<div align="center">
+
+Se você gosta dos meus projetos, considere fazer uma pequena doação.
+
+<table>
+  <tr>
+    <th align="center">Chave pix ❖</th>
+    <th align="center">Ethereum</th>
+    <th align="center">Bitcoin</th>
+  </tr>
+  <tr>
+    <td align="center">
+      <img width="180" height="180" src="donations/pix.jpg" alt="Chave Pix" />
+    </td>
+    <td align="center">
+      <img width="180" height="180" src="donations/ethereum.png" alt="Ethereum" />
+    </td>
+    <td align="center">
+      <img width="180" height="180" src="donations/bitcoin.png" alt="Bitcoin" />
+    </td>
+  </tr>
+</table>
+
+</div>
+
+Use um controle DualSense como mouse, scroll e teclado no macOS. O DualPad usa SwiftUI para a interface, GameController para receber os controles e eventos de Acessibilidade do macOS para operar mouse e teclado.
 
 ## Requisitos
 
@@ -76,31 +102,3 @@ Os binários publicados não são assinados nem notarizados com uma identidade d
 ## Privacidade
 
 O DualPad processa localmente as entradas do controle. Não inclui telemetria nem envia dados pela rede. O acesso de Acessibilidade é usado para postar eventos de mouse e teclado.
-
-
-## Contribuições
-
-<div align="center">
-
-Se você gosta dos meus projetos, considere fazer uma pequena doação.
-
-<table>
-  <tr>
-    <th align="center">Chave pix ❖</th>
-    <th align="center">Ethereum</th>
-    <th align="center">Bitcoin</th>
-  </tr>
-  <tr>
-    <td align="center">
-      <img width="180" height="180" src="donations/pix.jpg" alt="Chave Pix" />
-    </td>
-    <td align="center">
-      <img width="180" height="180" src="donations/ethereum.png" alt="Ethereum" />
-    </td>
-    <td align="center">
-      <img width="180" height="180" src="donations/bitcoin.png" alt="Bitcoin" />
-    </td>
-  </tr>
-</table>
-
-</div>
