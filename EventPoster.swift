@@ -127,6 +127,29 @@ final class EventPoster {
         e?.post(tap: .cghidEventTap)
     }
 
+    /// Sends the modifier as its own key event so macOS recognizes this system shortcut.
+    func showMissionControl() {
+        let controlKey = CGKeyCode(59)
+        let upArrow = CGKeyCode(Shortcut.missionControl.keyCode)
+
+        guard let controlDown = CGEvent(keyboardEventSource: source, virtualKey: controlKey, keyDown: true),
+              let arrowDown = CGEvent(keyboardEventSource: source, virtualKey: upArrow, keyDown: true),
+              let arrowUp = CGEvent(keyboardEventSource: source, virtualKey: upArrow, keyDown: false),
+              let controlUp = CGEvent(keyboardEventSource: source, virtualKey: controlKey, keyDown: false) else {
+            return
+        }
+
+        controlDown.flags = .maskControl
+        arrowDown.flags = .maskControl
+        arrowUp.flags = .maskControl
+        controlUp.flags = []
+
+        controlDown.post(tap: .cghidEventTap)
+        arrowDown.post(tap: .cghidEventTap)
+        arrowUp.post(tap: .cghidEventTap)
+        controlUp.post(tap: .cghidEventTap)
+    }
+
     // MARK: Utilidades
 
     /// Solta tudo o que estiver pressionado (usado ao desativar/desconectar).

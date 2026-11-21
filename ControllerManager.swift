@@ -196,7 +196,7 @@ final class ControllerManager: ObservableObject {
         case .middleClick:
             poster.setMouse(.middle, down: pressed)
         case .missionControl:
-            poster.key(Shortcut.missionControl, down: pressed)
+            if pressed { poster.showMissionControl() }
         case .key(let shortcut):
             poster.key(shortcut, down: pressed)
             if pressed {
