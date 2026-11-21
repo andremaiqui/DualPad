@@ -39,6 +39,10 @@ private final class WindowLockView: NSView {
 
         window.styleMask.remove(.resizable)
         window.styleMask.remove(.fullScreen)
+        window.styleMask.insert(.fullSizeContentView)
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.titlebarSeparatorStyle = .none
         window.collectionBehavior.insert(.fullScreenDisallowsTiling)
         window.standardWindowButton(.zoomButton)?.isEnabled = false
         window.standardWindowButton(.zoomButton)?.isHidden = false
@@ -78,18 +82,18 @@ private final class MenuBarController: NSObject, NSMenuDelegate {
         let menu = NSMenu()
         menu.delegate = self
 
-        let openItem = NSMenuItem(title: "Abrir DualPad", action: #selector(openMainWindow), keyEquivalent: "")
+        let openItem = NSMenuItem(title: AppLanguage.text("Abrir DualPad"), action: #selector(openMainWindow), keyEquivalent: "")
         openItem.target = self
         menu.addItem(openItem)
         menu.addItem(.separator())
 
-        let activeItem = NSMenuItem(title: "Controle ativo", action: #selector(toggleControl), keyEquivalent: "")
+        let activeItem = NSMenuItem(title: AppLanguage.text("Controle ativo"), action: #selector(toggleControl), keyEquivalent: "")
         activeItem.target = self
         menu.addItem(activeItem)
         activeControlItem = activeItem
         menu.addItem(.separator())
 
-        let quitItem = NSMenuItem(title: "Sair do DualPad", action: #selector(quit), keyEquivalent: "")
+        let quitItem = NSMenuItem(title: AppLanguage.text("Sair do DualPad"), action: #selector(quit), keyEquivalent: "")
         quitItem.target = self
         menu.addItem(quitItem)
 
@@ -109,7 +113,15 @@ private final class MenuBarController: NSObject, NSMenuDelegate {
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        refreshLanguage()
         updateControlItem()
+    }
+
+    func refreshLanguage() {
+        guard let menu = statusItem.menu else { return }
+        if menu.items.indices.contains(0) { menu.items[0].title = AppLanguage.text("Abrir DualPad") }
+        if menu.items.indices.contains(2) { menu.items[2].title = AppLanguage.text("Controle ativo") }
+        if menu.items.indices.contains(4) { menu.items[4].title = AppLanguage.text("Sair do DualPad") }
     }
 
     @objc private func openMainWindow() {
@@ -129,6 +141,7 @@ private final class MenuBarController: NSObject, NSMenuDelegate {
     }
 
     private func updateControlItem() {
+        activeControlItem?.title = AppLanguage.text("Controle ativo")
         activeControlItem?.state = manager?.settings.enabled == true ? .on : .off
     }
 }
@@ -137,6 +150,7 @@ struct ContentView: View {
     @EnvironmentObject private var pad: ControllerManager
     @Environment(\.openWindow) private var openWindow
     @AppStorage("dualpad.backgroundMode") private var backgroundMode = true
+    @AppStorage(AppLanguage.preferenceKey) private var languageCode = "pt-BR"
 
     private let accent = Color.accentColor
 
@@ -166,6 +180,10 @@ struct ContentView: View {
                 openWindow(id: "main")
             }
             applyBackgroundMode(isVisible)
+        }
+        .onChange(of: languageCode) { _, _ in
+            pad.refreshLocalizedStrings()
+            MenuBarController.shared.refreshLanguage()
         }
         .onChange(of: backgroundMode) { _, isVisible in
             MenuBarController.shared.setVisible(isVisible)
@@ -207,8 +225,11 @@ struct ContentView: View {
     }
 
     private var header: some View {
-        brand
-            .frame(maxWidth: .infinity, alignment: .leading)
+        HStack {
+            brand
+            Spacer(minLength: 12)
+            languagePicker
+        }
     }
 
     private var brand: some View {
@@ -235,10 +256,10 @@ struct ContentView: View {
                 .fill(pad.controllerName == nil ? Color.orange : Color.green)
                 .frame(width: 8, height: 8)
             VStack(alignment: .leading, spacing: 2) {
-                Text(pad.controllerName ?? "Nenhum controle conectado")
+                Text(pad.controllerName ?? AppLanguage.text("Nenhum controle conectado"))
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
-                Text(pad.batteryText.map { "Bateria \($0)" } ?? (pad.controllerName == nil ? "Conecte via Bluetooth ou USB" : "Conectado"))
+                Text(pad.batteryText.map { "\(AppLanguage.text("Bateria")) \($0)" } ?? (pad.controllerName == nil ? AppLanguage.text("Conecte via Bluetooth ou USB") : AppLanguage.text("Conectado")))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -250,27 +271,41 @@ struct ContentView: View {
 
     private var backgroundModeToggle: some View {
         HStack {
-            Text("Segundo plano")
+            Text(AppLanguage.text("Segundo plano"))
             Spacer()
-            Toggle("Segundo plano", isOn: $backgroundMode)
+            Toggle(AppLanguage.text("Segundo plano"), isOn: $backgroundMode)
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .fixedSize()
-                .help("Mantém o DualPad disponível pelo ícone na barra de menus.")
+                .help(AppLanguage.text("Mantém o DualPad disponível pelo ícone na barra de menus."))
         }
         .frame(maxWidth: .infinity)
     }
 
     private var activationToggle: some View {
         HStack {
-            Text("Ativo")
+            Text(AppLanguage.text("Ativo"))
             Spacer()
-            Toggle("Ativo", isOn: $pad.settings.enabled)
+            Toggle(AppLanguage.text("Ativo"), isOn: $pad.settings.enabled)
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .fixedSize()
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private var languagePicker: some View {
+        HStack {
+            Text(AppLanguage.text("Idioma"))
+            Spacer()
+            Picker(AppLanguage.text("Idioma"), selection: $languageCode) {
+                Text("Português (Brasil)").tag("pt-BR")
+                Text("English (U.S.)").tag("en-US")
+            }
+            .labelsHidden()
+            .controlSize(.small)
+            .frame(width: 142)
+        }
     }
 
     private var controllerStatusCard: some View {
@@ -293,31 +328,31 @@ struct ContentView: View {
 
     private var leftColumn: some View {
         VStack(spacing: 16) {
-            card(title: "MOVIMENTO", subtitle: "Personalize o cursor") {
+            card(title: AppLanguage.text("MOVIMENTO"), subtitle: AppLanguage.text("Personalize o cursor")) {
                 VStack(spacing: 15) {
-                    settingSlider("Velocidade", value: $pad.settings.mouseSpeed, range: 300...3000, valueText: String(format: "%.0f px/s", pad.settings.mouseSpeed), icon: "cursorarrow")
-                    settingSlider("Zona morta", value: $pad.settings.deadzone, range: 0.02...0.5, valueText: String(format: "%.2f", pad.settings.deadzone), icon: "circle.dashed")
-                    settingSlider("Aceleração", value: $pad.settings.acceleration, range: 1...3, valueText: String(format: "%.1f×", pad.settings.acceleration), icon: "speedometer")
+                    settingSlider(AppLanguage.text("Velocidade"), value: $pad.settings.mouseSpeed, range: 300...3000, valueText: String(format: "%.0f px/s", pad.settings.mouseSpeed), icon: "cursorarrow")
+                    settingSlider(AppLanguage.text("Zona morta"), value: $pad.settings.deadzone, range: 0.02...0.5, valueText: String(format: "%.2f", pad.settings.deadzone), icon: "circle.dashed")
+                    settingSlider(AppLanguage.text("Aceleração"), value: $pad.settings.acceleration, range: 1...3, valueText: String(format: "%.1f×", pad.settings.acceleration), icon: "speedometer")
                 }
             }
 
-            card(title: "SCROLL", subtitle: "Stick direito") {
+            card(title: "SCROLL", subtitle: AppLanguage.text("Stick direito")) {
                 VStack(spacing: 12) {
-                    settingSlider("Velocidade", value: $pad.settings.scrollSpeed, range: 200...3000, valueText: String(format: "%.0f px/s", pad.settings.scrollSpeed), icon: "arrow.up.and.down")
-                    Toggle("Inverter direção", isOn: $pad.settings.invertScroll)
+                    settingSlider(AppLanguage.text("Velocidade"), value: $pad.settings.scrollSpeed, range: 200...3000, valueText: String(format: "%.0f px/s", pad.settings.scrollSpeed), icon: "arrow.up.and.down")
+                    Toggle(AppLanguage.text("Inverter direção"), isOn: $pad.settings.invertScroll)
                         .toggleStyle(.switch)
                 }
             }
 
-            card(title: "TOUCHPAD", subtitle: "Gestos do DualSense") {
+            card(title: "TOUCHPAD", subtitle: AppLanguage.text("Gestos do DualSense")) {
                 VStack(alignment: .leading, spacing: 12) {
-                    Toggle("Mover cursor", isOn: $pad.settings.touchpadMouse)
+                    Toggle(AppLanguage.text("Mover cursor"), isOn: $pad.settings.touchpadMouse)
                         .toggleStyle(.switch)
                     if pad.settings.touchpadMouse {
-                        settingSlider("Sensibilidade", value: $pad.settings.touchpadSensitivity, range: 400...4000, valueText: String(format: "%.0f px", pad.settings.touchpadSensitivity), icon: "hand.draw")
+                        settingSlider(AppLanguage.text("Sensibilidade"), value: $pad.settings.touchpadSensitivity, range: 400...4000, valueText: String(format: "%.0f px", pad.settings.touchpadSensitivity), icon: "hand.draw")
                     }
                     Divider().overlay(Color.primary.opacity(0.1))
-                    Text("Clique do touchpad")
+                    Text(AppLanguage.text("Clique do touchpad"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     actionPicker(for: .touchpad)
@@ -332,7 +367,7 @@ struct ContentView: View {
         VStack(spacing: 16) {
             controllerStatusCard
 
-            card(title: "BOTÕES", subtitle: "Escolha o que cada botão faz") {
+            card(title: AppLanguage.text("BOTÕES"), subtitle: AppLanguage.text("Escolha o que cada botão faz")) {
                 VStack(spacing: 3) {
                     mappingRow(.l2, symbol: "l2.button.roundedtop.horizontal")
                     mappingRow(.l1, symbol: "l1.button.roundedtop.horizontal")
@@ -354,7 +389,7 @@ struct ContentView: View {
                     mappingRow(.ps, symbol: "playstation.logo")
                 }
 
-                Button("Restaurar padrão") {
+                Button(AppLanguage.text("Restaurar padrão")) {
                     pad.resetMapping()
                 }
                 .font(.caption.weight(.medium))
@@ -369,15 +404,15 @@ struct ContentView: View {
         VStack(spacing: 16) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("MAPEAMENTO")
+                    Text(AppLanguage.text("MAPEAMENTO"))
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                         .tracking(1.4)
                         .foregroundStyle(accent)
-                    Text("Visão geral do controle")
+                    Text(AppLanguage.text("Visão geral do controle"))
                         .font(.title3.weight(.semibold))
                 }
                 Spacer()
-                Text(pad.lastPressed == "—" ? "Aguardando botão" : pad.lastPressed)
+                Text(pad.lastPressed == "—" ? AppLanguage.text("Aguardando botão") : pad.lastPressed)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 11)
@@ -395,9 +430,9 @@ struct ContentView: View {
                     .shadow(color: .black.opacity(0.16), radius: 18, y: 10)
             } else {
                 ContentUnavailableView(
-                    "Imagem do controle indisponível",
+                    AppLanguage.text("Imagem do controle indisponível"),
                     systemImage: "gamecontroller",
-                    description: Text("DualSenseController.png não foi encontrada no app.")
+                    description: Text(AppLanguage.text("DualSenseController.png não foi encontrada no app."))
                 )
                 .frame(maxWidth: 560)
                 .aspectRatio(16.0 / 9.0, contentMode: .fit)
@@ -406,7 +441,7 @@ struct ContentView: View {
             HStack(spacing: 8) {
                 Image(systemName: "info.circle")
                     .foregroundStyle(accent)
-                Text("Altere qualquer ação pelos menus de cada botão.")
+                Text(AppLanguage.text("Altere qualquer ação pelos menus de cada botão."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -425,20 +460,20 @@ struct ContentView: View {
     }
 
     private var accessibilityCard: some View {
-        card(title: "ACESSIBILIDADE", subtitle: pad.accessibilityGranted ? "Permissão concedida" : "Necessária para controlar o Mac") {
+        card(title: AppLanguage.text("ACESSIBILIDADE"), subtitle: pad.accessibilityGranted ? AppLanguage.text("Permissão concedida") : AppLanguage.text("Necessária para controlar o Mac")) {
             HStack(spacing: 10) {
                 Image(systemName: pad.accessibilityGranted ? "checkmark.shield.fill" : "exclamationmark.triangle.fill")
                     .foregroundStyle(pad.accessibilityGranted ? .green : .orange)
-                Text(pad.accessibilityGranted ? "Tudo pronto para usar." : "Ative o DualPad nos Ajustes do Sistema.")
+                Text(pad.accessibilityGranted ? AppLanguage.text("Tudo pronto para usar.") : AppLanguage.text("Ative o DualPad nos Ajustes do Sistema."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             if !pad.accessibilityGranted {
                 HStack {
-                    Button("Pedir") { pad.requestAccessibility() }
+                    Button(AppLanguage.text("Pedir")) { pad.requestAccessibility() }
                         .buttonStyle(.glass)
-                    Button("Abrir Ajustes") { pad.openAccessibilitySettings() }
+                    Button(AppLanguage.text("Abrir Ajustes")) { pad.openAccessibilitySettings() }
                         .buttonStyle(.glass)
                 }
             }

@@ -1,6 +1,92 @@
 import Foundation
 import CoreGraphics
 
+enum AppLanguage {
+    static let preferenceKey = "dualpad.language"
+
+    static var isEnglish: Bool {
+        UserDefaults.standard.string(forKey: preferenceKey) == "en-US"
+    }
+
+    static func text(_ portuguese: String) -> String {
+        guard isEnglish else { return portuguese }
+        return translations[portuguese] ?? portuguese
+    }
+
+    static func shortcutLabel(_ label: String) -> String {
+        guard isEnglish else { return label }
+        let labels = [
+            "Espaço": "Space",
+            "Seta ↑": "Up Arrow",
+            "Seta ↓": "Down Arrow",
+            "Seta ←": "Left Arrow",
+            "Seta →": "Right Arrow",
+            "⌘W (fechar janela)": "⌘W (Close Window)",
+            "⌘C (copiar)": "⌘C (Copy)",
+            "⌘V (colar)": "⌘V (Paste)",
+            "⌘Z (desfazer)": "⌘Z (Undo)",
+            "⌘[ (voltar)": "⌘[ (Back)",
+            "⌘] (avançar)": "⌘] (Forward)",
+            "⌘Espaço (Spotlight)": "⌘Space (Spotlight)"
+        ]
+        return labels[label] ?? label
+    }
+
+    private static let translations: [String: String] = [
+        "Seu DualSense, do seu jeito": "Your DualSense, your way",
+        "Nenhum controle conectado": "No controller connected",
+        "Bateria": "Battery",
+        "Conecte via Bluetooth ou USB": "Connect via Bluetooth or USB",
+        "Conectado": "Connected",
+        "Segundo plano": "Background",
+        "Mantém o DualPad disponível pelo ícone na barra de menus.": "Keeps DualPad available from the menu bar icon.",
+        "Ativo": "Enabled",
+        "MOVIMENTO": "MOTION",
+        "Personalize o cursor": "Customize the cursor",
+        "Velocidade": "Speed",
+        "Zona morta": "Dead zone",
+        "Aceleração": "Acceleration",
+        "Stick direito": "Right stick",
+        "Inverter direção": "Invert direction",
+        "TOUCHPAD": "TOUCHPAD",
+        "Gestos do DualSense": "DualSense Gestures",
+        "Mover cursor": "Move cursor",
+        "Sensibilidade": "Sensitivity",
+        "Clique do touchpad": "Touchpad click",
+        "BOTÕES": "BUTTONS",
+        "Escolha o que cada botão faz": "Choose what each button does",
+        "Restaurar padrão": "Restore defaults",
+        "MAPEAMENTO": "MAPPING",
+        "Visão geral do controle": "Controller overview",
+        "Aguardando botão": "Waiting for button",
+        "Imagem do controle indisponível": "Controller image unavailable",
+        "DualSenseController.png não foi encontrada no app.": "DualSenseController.png could not be found in the app.",
+        "Altere qualquer ação pelos menus de cada botão.": "Change any action using the menu for each button.",
+        "ACESSIBILIDADE": "ACCESSIBILITY",
+        "Permissão concedida": "Permission granted",
+        "Necessária para controlar o Mac": "Required to control your Mac",
+        "Tudo pronto para usar.": "You’re all set.",
+        "Ative o DualPad nos Ajustes do Sistema.": "Enable DualPad in System Settings.",
+        "Pedir": "Request",
+        "Abrir Ajustes": "Open Settings",
+        "L3 (clique do stick esquerdo)": "L3 (Left Stick Click)",
+        "R3 (clique do stick direito)": "R3 (Right Stick Click)",
+        "Botão PS": "PS Button",
+        "Nada": "None",
+        "Clique esquerdo": "Left click",
+        "Clique direito": "Right click",
+        "Clique do meio": "Middle click",
+        "Tecla:": "Key:",
+        "pressionado": "pressed",
+        "solto": "released",
+        "carregando": "charging",
+        "Abrir DualPad": "Open DualPad",
+        "Controle ativo": "Controller enabled",
+        "Sair do DualPad": "Quit DualPad",
+        "Idioma": "Language"
+    ]
+}
+
 // MARK: - Botões do DualSense
 
 enum PadButton: String, CaseIterable, Codable, Identifiable {
@@ -21,16 +107,16 @@ enum PadButton: String, CaseIterable, Codable, Identifiable {
         case .r1: return "R1"
         case .l2: return "L2"
         case .r2: return "R2"
-        case .l3: return "L3 (clique do stick esquerdo)"
-        case .r3: return "R3 (clique do stick direito)"
+        case .l3: return AppLanguage.text("L3 (clique do stick esquerdo)")
+        case .r3: return AppLanguage.text("R3 (clique do stick direito)")
         case .dpadUp: return "D-pad ↑"
         case .dpadDown: return "D-pad ↓"
         case .dpadLeft: return "D-pad ←"
         case .dpadRight: return "D-pad →"
         case .options: return "Options"
         case .create: return "Create"
-        case .ps: return "Botão PS"
-        case .touchpad: return "Clique do touchpad"
+        case .ps: return AppLanguage.text("Botão PS")
+        case .touchpad: return AppLanguage.text("Clique do touchpad")
         }
     }
 }
@@ -43,6 +129,8 @@ struct Shortcut: Codable, Hashable {
     var flagsRaw: UInt64
 
     var flags: CGEventFlags { CGEventFlags(rawValue: flagsRaw) }
+
+    var displayLabel: String { AppLanguage.shortcutLabel(label) }
 
     private static let cmd = CGEventFlags.maskCommand.rawValue
     private static let ctrl = CGEventFlags.maskControl.rawValue
@@ -85,12 +173,14 @@ enum PadAction: Codable, Hashable {
 
     var title: String {
         switch self {
-        case .none: return "Nada"
-        case .leftClick: return "Clique esquerdo"
-        case .rightClick: return "Clique direito"
-        case .middleClick: return "Clique do meio"
+        case .none: return AppLanguage.text("Nada")
+        case .leftClick: return AppLanguage.text("Clique esquerdo")
+        case .rightClick: return AppLanguage.text("Clique direito")
+        case .middleClick: return AppLanguage.text("Clique do meio")
         case .missionControl: return "Mission Control"
-        case .key(let s): return "Tecla: \(s.label)"
+        case .key(let s):
+            let prefix = AppLanguage.text("Tecla:")
+            return "\(prefix) \(s.displayLabel)"
         }
     }
 

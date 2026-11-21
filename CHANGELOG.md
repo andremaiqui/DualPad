@@ -14,6 +14,7 @@ As alterações publicadas são agrupadas por versão e geradas automaticamente 
 - Use o modo Segundo plano para fechar a janela, ocultar o app da Dock e continuar usando os controles pelo ícone na barra de menus. Reabra a janela pelo menu ou encerre o app por ali.
 - Acompanhe e solicite a permissão de Acessibilidade necessária para enviar ações de mouse e teclado.
 - Aproveite uma interface SwiftUI que acompanha a aparência do sistema, com janela em tamanho fixo e ilustração oficial do controle.
+- Alterne toda a interface entre Português (Brasil) e English (U.S.) em tempo real, incluindo mapeamentos, atalhos, estados e menu da barra de menus, sem reiniciar o app.
 
 ### Privacidade e requisitos
 

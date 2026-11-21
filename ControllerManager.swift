@@ -38,6 +38,8 @@ final class ControllerManager: ObservableObject {
     private let repeatInterval = 0.045
 
     private var lastTouch: (x: Float, y: Float)?
+    private var lastButton: PadButton?
+    private var lastButtonPressed: Bool?
 
     private static let storeKey = "dualpad.settings.v1"
 
@@ -88,6 +90,13 @@ final class ControllerManager: ObservableObject {
 
     func refreshAccessibility() {
         accessibilityGranted = AXIsProcessTrusted()
+    }
+
+    func refreshLocalizedStrings() {
+        updateBattery()
+        if let lastButton, let lastButtonPressed {
+            lastPressed = "\(lastButton.title) \(AppLanguage.text(lastButtonPressed ? "pressionado" : "solto"))"
+        }
     }
 
     func openAccessibilitySettings() {
@@ -154,7 +163,7 @@ final class ControllerManager: ObservableObject {
         guard let b = controller?.battery else { batteryText = nil; return }
         let pct = Int((b.batteryLevel * 100).rounded())
         switch b.batteryState {
-        case .charging: batteryText = "\(pct)% (carregando)"
+        case .charging: batteryText = "\(pct)% (\(AppLanguage.text("carregando")))"
         case .full: batteryText = "100%"
         default: batteryText = "\(pct)%"
         }
@@ -183,7 +192,9 @@ final class ControllerManager: ObservableObject {
     // MARK: Botões
 
     private func buttonChanged(_ id: PadButton, pressed: Bool) {
-        lastPressed = "\(id.title) \(pressed ? "pressionado" : "solto")"
+        lastButton = id
+        lastButtonPressed = pressed
+        lastPressed = "\(id.title) \(AppLanguage.text(pressed ? "pressionado" : "solto"))"
         guard settings.enabled else { return }
 
         switch settings.action(for: id) {
