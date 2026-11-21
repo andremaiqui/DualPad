@@ -3,7 +3,7 @@
   <h1>DualPad</h1>
 </div>
 
-## Contribuições
+<h2 align="center">Contribuições</h2>
 
 <div align="center">
 
