@@ -12,6 +12,7 @@ struct DualPadApp: App {
                 .background(FixedWindowConfigurator())
         }
         .defaultSize(width: 1_400, height: 820)
+        .windowStyle(.hiddenTitleBar)
 
         Settings {
             LanguageSettingsView()
