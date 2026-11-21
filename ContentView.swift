@@ -4,7 +4,6 @@ import SwiftUI
 @main
 struct DualPadApp: App {
     @StateObject private var manager = ControllerManager()
-    @AppStorage("dualpad.backgroundMode") private var backgroundMode = true
 
     var body: some Scene {
         WindowGroup(id: "main") {
@@ -13,37 +12,86 @@ struct DualPadApp: App {
         }
         .defaultSize(width: 1_350, height: 900)
         .windowResizability(.automatic)
-
-        MenuBarExtra("DualPad", systemImage: "gamecontroller.fill", isInserted: $backgroundMode) {
-            DualPadMenuBarMenu()
-        }
-        .menuBarExtraStyle(.menu)
     }
 }
 
-private struct DualPadMenuBarMenu: View {
-    @Environment(\.openWindow) private var openWindow
+@MainActor
+private final class MenuBarController: NSObject, NSMenuDelegate {
+    static let shared = MenuBarController()
 
-    var body: some View {
-        Button("Abrir DualPad") {
-            NSApp.activate(ignoringOtherApps: true)
-            openWindow(id: "main")
+    private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+    private var manager: ControllerManager?
+    private var openWindow: (() -> Void)?
+    private var activeControlItem: NSMenuItem?
+
+    private override init() {
+        super.init()
+
+        if let button = statusItem.button {
+            button.image = NSImage(systemSymbolName: "gamecontroller.fill", accessibilityDescription: "DualPad")
+            button.image?.isTemplate = true
         }
 
-        Divider()
+        let menu = NSMenu()
+        menu.delegate = self
 
-        Label("O DualPad continua ativo em segundo plano.", systemImage: "gamecontroller.fill")
+        let openItem = NSMenuItem(title: "Abrir DualPad", action: #selector(openMainWindow), keyEquivalent: "")
+        openItem.target = self
+        menu.addItem(openItem)
+        menu.addItem(.separator())
 
-        Divider()
+        let activeItem = NSMenuItem(title: "Controle ativo", action: #selector(toggleControl), keyEquivalent: "")
+        activeItem.target = self
+        menu.addItem(activeItem)
+        activeControlItem = activeItem
+        menu.addItem(.separator())
 
-        Button("Sair do DualPad") {
-            NSApp.terminate(nil)
-        }
+        let quitItem = NSMenuItem(title: "Sair do DualPad", action: #selector(quit), keyEquivalent: "")
+        quitItem.target = self
+        menu.addItem(quitItem)
+
+        statusItem.menu = menu
+        statusItem.isVisible = false
+    }
+
+    func configure(manager: ControllerManager, isVisible: Bool, openWindow: @escaping () -> Void) {
+        self.manager = manager
+        self.openWindow = openWindow
+        statusItem.isVisible = isVisible
+        updateControlItem()
+    }
+
+    func setVisible(_ isVisible: Bool) {
+        statusItem.isVisible = isVisible
+    }
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        updateControlItem()
+    }
+
+    @objc private func openMainWindow() {
+        NSApp.activate(ignoringOtherApps: true)
+        openWindow?()
+    }
+
+    @objc private func toggleControl() {
+        guard let manager else { return }
+        manager.settings.enabled.toggle()
+        updateControlItem()
+    }
+
+    @objc private func quit() {
+        NSApp.terminate(nil)
+    }
+
+    private func updateControlItem() {
+        activeControlItem?.state = manager?.settings.enabled == true ? .on : .off
     }
 }
 
 struct ContentView: View {
     @EnvironmentObject private var pad: ControllerManager
+    @Environment(\.openWindow) private var openWindow
     @AppStorage("dualpad.backgroundMode") private var backgroundMode = true
 
     private let accent = Color.accentColor
@@ -65,6 +113,15 @@ struct ContentView: View {
             .padding(24)
         }
         .frame(minWidth: 1_180, idealWidth: 1_350, minHeight: 820, idealHeight: 900)
+        .onAppear {
+            let isVisible = UserDefaults.standard.object(forKey: "dualpad.backgroundMode") as? Bool ?? true
+            MenuBarController.shared.configure(manager: pad, isVisible: isVisible) {
+                openWindow(id: "main")
+            }
+        }
+        .onChange(of: backgroundMode) { _, isVisible in
+            MenuBarController.shared.setVisible(isVisible)
+        }
     }
 
     private var background: some View {
