@@ -67,8 +67,10 @@ struct Shortcut: Codable, Hashable {
         Shortcut(label: "⌘[ (voltar)", keyCode: 33, flagsRaw: cmd),
         Shortcut(label: "⌘] (avançar)", keyCode: 30, flagsRaw: cmd),
         Shortcut(label: "⌘Espaço (Spotlight)", keyCode: 49, flagsRaw: cmd),
-        Shortcut(label: "⌃↑ (Mission Control)", keyCode: 126, flagsRaw: ctrl),
+        missionControl,
     ]
+
+    static let missionControl = Shortcut(label: "⌃↑ (Mission Control)", keyCode: 126, flagsRaw: ctrl)
 }
 
 // MARK: - Ações
@@ -78,6 +80,7 @@ enum PadAction: Codable, Hashable {
     case leftClick
     case rightClick
     case middleClick
+    case missionControl
     case key(Shortcut)
 
     var title: String {
@@ -86,12 +89,15 @@ enum PadAction: Codable, Hashable {
         case .leftClick: return "Clique esquerdo"
         case .rightClick: return "Clique direito"
         case .middleClick: return "Clique do meio"
+        case .missionControl: return "Mission Control"
         case .key(let s): return "Tecla: \(s.label)"
         }
     }
 
     static let all: [PadAction] =
-        [.none, .leftClick, .rightClick, .middleClick] + Shortcut.presets.map { .key($0) }
+        [.none, .leftClick, .rightClick, .middleClick, .missionControl] + Shortcut.presets
+            .filter { $0 != Shortcut.missionControl }
+            .map { .key($0) }
 }
 
 // MARK: - Configurações
@@ -143,7 +149,7 @@ struct PadSettings: Codable {
             PadButton.dpadRight.rawValue: key("Seta →"),
             PadButton.options.rawValue: key("Escape"),
             PadButton.create.rawValue: .none,
-            PadButton.ps.rawValue: key("⌃↑ (Mission Control)"),
+            PadButton.ps.rawValue: .missionControl,
             PadButton.touchpad.rawValue: .leftClick,
         ]
     }

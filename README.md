@@ -72,7 +72,7 @@ O macOS exige que a pessoa autorize o acesso de Acessibilidade. O DualPad pode a
 | D-pad | Setas do teclado |
 | Botão PS | Mission Control |
 
-As ações podem ser alteradas nos menus de cada botão.
+As ações podem ser alteradas nos menus de cada botão. No menu **Clique do touchpad**, escolha **Mission Control** para mostrar as janelas e mesas abertas no Mac. A ação usa o atalho padrão `Control–↑` do macOS.
 
 ## Barra de menus
 
