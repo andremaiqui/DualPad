@@ -1,0 +1,18 @@
+# Xcode local state and build products
+.DS_Store
+*.xcuserstate
+xcuserdata/
+DerivedData/
+build/
+
+# Built application bundles and archives
+*.app/
+*.dSYM/
+*.xcarchive/
+*.zip
+*.ipa
+
+# Local credentials and signing material
+*.p12
+*.mobileprovision
+*.provisionprofile

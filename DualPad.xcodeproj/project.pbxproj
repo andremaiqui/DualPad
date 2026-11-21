@@ -1,0 +1,35 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 56;
+	objects = {
+		A10000000000000000000001 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* ContentView.swift */; };
+		A10000000000000000000002 /* ControllerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* ControllerManager.swift */; };
+		A10000000000000000000003 /* EventPoster.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000003 /* EventPoster.swift */; };
+		A10000000000000000000004 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000004 /* Models.swift */; };
+		A10000000000000000000005 /* DualSenseController.png in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000005 /* DualSenseController.png */; };
+		B10000000000000000000001 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B10000000000000000000002 /* ControllerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerManager.swift; sourceTree = "<group>"; };
+		B10000000000000000000003 /* EventPoster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventPoster.swift; sourceTree = "<group>"; };
+		B10000000000000000000004 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		B10000000000000000000005 /* DualSenseController.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = DualSenseController.png; sourceTree = "<group>"; };
+		B10000000000000000000006 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		B10000000000000000000007 /* DualPad.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DualPad.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C10000000000000000000001 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		C10000000000000000000002 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001 /* ContentView.swift in Sources */, A10000000000000000000002 /* ControllerManager.swift in Sources */, A10000000000000000000003 /* EventPoster.swift in Sources */, A10000000000000000000004 /* Models.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
+		C10000000000000000000003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000005 /* DualSenseController.png in Resources */, ); runOnlyForDeploymentPostprocessing = 0; };
+		D10000000000000000000001 = {isa = PBXGroup; children = (D10000000000000000000002, D10000000000000000000003, ); sourceTree = "<group>"; };
+		D10000000000000000000002 /* DualPad files */ = {isa = PBXGroup; sourceTree = "<group>"; children = (B10000000000000000000001, B10000000000000000000002, B10000000000000000000003, B10000000000000000000004, B10000000000000000000005, B10000000000000000000006, ); };
+		D10000000000000000000003 /* Products */ = {isa = PBXGroup; name = Products; sourceTree = "<group>"; children = (B10000000000000000000007, ); };
+		E10000000000000000000001 /* DualPad */ = {isa = PBXNativeTarget; buildConfigurationList = F10000000000000000000002; buildPhases = (C10000000000000000000002, C10000000000000000000001, C10000000000000000000003, ); buildRules = (); dependencies = (); name = DualPad; productName = DualPad; productReference = B10000000000000000000007; productType = "com.apple.product-type.application"; };
+		E10000000000000000000002 /* Project object */ = {isa = PBXProject; attributes = {BuildIndependentTargetsInParallel = 1; LastUpgradeCheck = 2700; }; buildConfigurationList = F10000000000000000000001; compatibilityVersion = "Xcode 15.0"; developmentRegion = en; mainGroup = D10000000000000000000001; productRefGroup = D10000000000000000000003; projectDirPath = ""; projectRoot = ""; targets = (E10000000000000000000001, ); };
+		F10000000000000000000001 = {isa = XCConfigurationList; buildConfigurations = (F20000000000000000000001, F20000000000000000000002, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		F10000000000000000000002 = {isa = XCConfigurationList; buildConfigurations = (F20000000000000000000003, F20000000000000000000004, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		F20000000000000000000001 /* Project Debug */ = {isa = XCBuildConfiguration; buildSettings = {MACOSX_DEPLOYMENT_TARGET = 26.0; SDKROOT = macosx; SWIFT_VERSION = 5.0; }; name = Debug; };
+		F20000000000000000000002 /* Project Release */ = {isa = XCBuildConfiguration; buildSettings = {MACOSX_DEPLOYMENT_TARGET = 26.0; SDKROOT = macosx; SWIFT_VERSION = 5.0; }; name = Release; };
+		F20000000000000000000003 /* App Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = YES; CODE_SIGN_IDENTITY = "-"; OTHER_CODE_SIGN_FLAGS = "--requirements \"=designated => identifier \\\"com.andremaiqui.DualPad\\\"\""; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = DualPad; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities"; MACOSX_DEPLOYMENT_TARGET = 26.0; PRODUCT_BUNDLE_IDENTIFIER = com.andremaiqui.DualPad; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = macosx; SWIFT_VERSION = 5.0; }; name = Debug; };
+		F20000000000000000000004 /* App Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = YES; CODE_SIGN_IDENTITY = "-"; OTHER_CODE_SIGN_FLAGS = "--requirements \"=designated => identifier \\\"com.andremaiqui.DualPad\\\"\""; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = DualPad; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities"; MACOSX_DEPLOYMENT_TARGET = 26.0; PRODUCT_BUNDLE_IDENTIFIER = com.andremaiqui.DualPad; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = macosx; SWIFT_VERSION = 5.0; }; name = Release; };
+	};
+	rootObject = E10000000000000000000002;
+}

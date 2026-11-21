@@ -1,0 +1,145 @@
+import Foundation
+import CoreGraphics
+import AppKit
+
+enum MouseKind { case left, right, middle }
+
+/// Cria e posta eventos de mouse/scroll/teclado. Exige permissão de Acessibilidade
+/// e que o App Sandbox esteja DESLIGADO.
+final class EventPoster {
+    private let source = CGEventSource(stateID: .hidSystemState)
+
+    private var leftDown = false
+    private var rightDown = false
+    private var middleDown = false
+
+    // Posição "virtual" para não perder movimentos menores que 1 pixel.
+    private var tracked: CGPoint?
+
+    // Controle de duplo clique.
+    private var lastClickTime: TimeInterval = 0
+    private var lastClickPoint = CGPoint.zero
+    private var clickCount: Int64 = 0
+
+    // Acumuladores de scroll (a API só aceita inteiros).
+    private var scrollAccumX = 0.0
+    private var scrollAccumY = 0.0
+
+    var cursor: CGPoint { CGEvent(source: nil)?.location ?? .zero }
+
+    // MARK: Mouse
+
+    func moveCursor(dx: Double, dy: Double) {
+        guard dx != 0 || dy != 0 else { return }
+
+        let real = cursor
+        if let tracked, hypot(real.x - tracked.x, real.y - tracked.y) <= 2 {
+            // Keep the fractional position accumulated by the controller.
+        } else {
+            tracked = real // o usuário mexeu o cursor por outro meio
+        }
+        var p = tracked ?? real
+        p.x += dx
+        p.y += dy
+        p = clamp(p)
+        tracked = p
+
+        let type: CGEventType
+        let button: CGMouseButton
+        if leftDown { type = .leftMouseDragged; button = .left }
+        else if rightDown { type = .rightMouseDragged; button = .right }
+        else if middleDown { type = .otherMouseDragged; button = .center }
+        else { type = .mouseMoved; button = .left }
+
+        let e = CGEvent(mouseEventSource: source, mouseType: type,
+                        mouseCursorPosition: p, mouseButton: button)
+        e?.setIntegerValueField(.mouseEventDeltaX, value: Int64(dx.rounded()))
+        e?.setIntegerValueField(.mouseEventDeltaY, value: Int64(dy.rounded()))
+        e?.post(tap: .cghidEventTap)
+    }
+
+    func setMouse(_ kind: MouseKind, down: Bool) {
+        let p = cursor
+        let downType: CGEventType
+        let upType: CGEventType
+        let button: CGMouseButton
+        switch kind {
+        case .left:   downType = .leftMouseDown;  upType = .leftMouseUp;  button = .left
+        case .right:  downType = .rightMouseDown; upType = .rightMouseUp; button = .right
+        case .middle: downType = .otherMouseDown; upType = .otherMouseUp; button = .center
+        }
+
+        if down {
+            let now = ProcessInfo.processInfo.systemUptime
+            let near = hypot(p.x - lastClickPoint.x, p.y - lastClickPoint.y) < 5
+            if now - lastClickTime < NSEvent.doubleClickInterval && near {
+                clickCount += 1
+            } else {
+                clickCount = 1
+            }
+            lastClickTime = now
+            lastClickPoint = p
+        }
+
+        let e = CGEvent(mouseEventSource: source, mouseType: down ? downType : upType,
+                        mouseCursorPosition: p, mouseButton: button)
+        e?.setIntegerValueField(.mouseEventClickState, value: clickCount)
+        e?.post(tap: .cghidEventTap)
+
+        switch kind {
+        case .left: leftDown = down
+        case .right: rightDown = down
+        case .middle: middleDown = down
+        }
+    }
+
+    func scroll(dx: Double, dy: Double) {
+        scrollAccumX += dx
+        scrollAccumY += dy
+        let ix = Int32(scrollAccumX)
+        let iy = Int32(scrollAccumY)
+        guard ix != 0 || iy != 0 else { return }
+        scrollAccumX -= Double(ix)
+        scrollAccumY -= Double(iy)
+
+        let e = CGEvent(scrollWheelEvent2Source: source, units: .pixel, wheelCount: 2,
+                        wheel1: iy, wheel2: ix, wheel3: 0)
+        e?.post(tap: .cghidEventTap)
+    }
+
+    // MARK: Teclado
+
+    func key(_ shortcut: Shortcut, down: Bool, autorepeat: Bool = false) {
+        let e = CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(shortcut.keyCode),
+                        keyDown: down)
+        e?.flags = shortcut.flags
+        if autorepeat {
+            e?.setIntegerValueField(.keyboardEventAutorepeat, value: 1)
+        }
+        e?.post(tap: .cghidEventTap)
+    }
+
+    // MARK: Utilidades
+
+    /// Solta tudo o que estiver pressionado (usado ao desativar/desconectar).
+    func releaseAll() {
+        if leftDown { setMouse(.left, down: false) }
+        if rightDown { setMouse(.right, down: false) }
+        if middleDown { setMouse(.middle, down: false) }
+    }
+
+    private func clamp(_ p: CGPoint) -> CGPoint {
+        var count: UInt32 = 0
+        CGGetActiveDisplayList(0, nil, &count)
+        guard count > 0 else { return p }
+        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+        CGGetActiveDisplayList(count, &ids, &count)
+
+        var rect = CGRect.null
+        for id in ids { rect = rect.union(CGDisplayBounds(id)) }
+        guard !rect.isNull else { return p }
+
+        return CGPoint(x: min(max(p.x, rect.minX), rect.maxX - 1),
+                       y: min(max(p.y, rect.minY), rect.maxY - 1))
+    }
+}
