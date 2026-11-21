@@ -1,6 +1,10 @@
-# DualPad
+<div align="center">
+  <img src="DualPad.png" width="200" alt="Ícone oficial do DualPad" />
+  <h1>DualPad</h1>
+  <p>Use seu DualSense como mouse, scroll e teclado no macOS.</p>
+</div>
 
-Use um controle DualSense como mouse, scroll e teclado no macOS. O DualPad usa SwiftUI para a interface, GameController para receber os controles e eventos de acessibilidade do macOS para operar mouse e teclado.
+O DualPad usa SwiftUI para a interface, GameController para receber os controles e eventos de Acessibilidade do macOS para operar mouse e teclado.
 
 ## Requisitos
 
@@ -72,3 +76,31 @@ Os binários publicados não são assinados nem notarizados com uma identidade d
 ## Privacidade
 
 O DualPad processa localmente as entradas do controle. Não inclui telemetria nem envia dados pela rede. O acesso de Acessibilidade é usado para postar eventos de mouse e teclado.
+
+
+## Contribuições
+
+<div align="center">
+
+Se você gosta dos meus projetos, considere fazer uma pequena doação.
+
+<table>
+  <tr>
+    <th align="center">Chave pix ❖</th>
+    <th align="center">Ethereum</th>
+    <th align="center">Bitcoin</th>
+  </tr>
+  <tr>
+    <td align="center">
+      <img width="180" height="180" src="https://github.com/user-attachments/assets/0c8eed80-a6e7-4f93-bef5-7d31c1237de9" alt="Chave Pix" />
+    </td>
+    <td align="center">
+      <img width="180" height="180" src="https://github.com/user-attachments/assets/902b34bc-ee97-4aee-83fa-0580ab0e12fe" alt="Ethereum" />
+    </td>
+    <td align="center">
+      <img width="180" height="180" src="https://github.com/user-attachments/assets/3d62c33b-b1be-4454-be79-924819ca55cc" alt="Bitcoin" />
+    </td>
+  </tr>
+</table>
+
+</div>
