@@ -49,6 +49,10 @@ O projeto não usa App Sandbox porque o sandbox impede o envio dos eventos neces
 
 ## Primeira execução
 
+<div align="center">
+  <img src="docs/images/primeira-execucao.png" width="800" alt="DualPad conectado ao controle DualSense" />
+</div>
+
 1. Conecte o DualSense.
 2. Abra o DualPad e escolha **Pedir** na seção **Acessibilidade**.
 3. Em **Ajustes do Sistema → Privacidade e Segurança → Acessibilidade**, permita o DualPad.
