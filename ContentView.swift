@@ -12,6 +12,25 @@ struct DualPadApp: App {
                 .background(FixedWindowConfigurator())
         }
         .defaultSize(width: 1_400, height: 820)
+
+        Settings {
+            LanguageSettingsView()
+        }
+    }
+}
+
+private struct LanguageSettingsView: View {
+    @AppStorage(AppLanguage.preferenceKey) private var languageCode = "pt-BR"
+
+    var body: some View {
+        Form {
+            Picker(AppLanguage.text("Idioma"), selection: $languageCode) {
+                Text("Português (Brasil)").tag("pt-BR")
+                Text("English (U.S.)").tag("en-US")
+            }
+        }
+        .padding(20)
+        .frame(width: 380, height: 92)
     }
 }
 
@@ -225,11 +244,8 @@ struct ContentView: View {
     }
 
     private var header: some View {
-        HStack {
-            brand
-            Spacer(minLength: 12)
-            languagePicker
-        }
+        brand
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var brand: some View {
@@ -292,20 +308,6 @@ struct ContentView: View {
                 .fixedSize()
         }
         .frame(maxWidth: .infinity)
-    }
-
-    private var languagePicker: some View {
-        HStack {
-            Text(AppLanguage.text("Idioma"))
-            Spacer()
-            Picker(AppLanguage.text("Idioma"), selection: $languageCode) {
-                Text("Português (Brasil)").tag("pt-BR")
-                Text("English (U.S.)").tag("en-US")
-            }
-            .labelsHidden()
-            .controlSize(.small)
-            .frame(width: 142)
-        }
     }
 
     private var controllerStatusCard: some View {
@@ -558,6 +560,7 @@ struct ContentView: View {
         }
         .labelsHidden()
         .controlSize(.small)
+        .id(languageCode)
     }
 }
 
