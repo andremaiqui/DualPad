@@ -59,6 +59,10 @@ jobs:
             /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $VERSION" "$APP/Contents/Info.plist"
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $GITHUB_RUN_NUMBER" "$APP/Contents/Info.plist" 2>/dev/null || \
             /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $GITHUB_RUN_NUMBER" "$APP/Contents/Info.plist"
+          xattr -cr "$APP"
+          codesign --force --deep --sign - \
+            --requirements '=designated => identifier "com.andremaiqui.DualPad"' "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
           ditto -c -k --sequesterRsrc --keepParent "$APP" DualPad-macOS.zip
       - name: Attach app to GitHub release
         env:
