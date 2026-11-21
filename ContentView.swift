@@ -9,9 +9,52 @@ struct DualPadApp: App {
         WindowGroup(id: "main") {
             ContentView()
                 .environmentObject(manager)
+                .background(FixedWindowConfigurator())
         }
-        .defaultSize(width: 1_350, height: 900)
-        .windowResizability(.automatic)
+        .defaultSize(width: 1_400, height: 820)
+    }
+}
+
+private struct FixedWindowConfigurator: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        WindowLockView()
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        (nsView as? WindowLockView)?.configureWindow()
+    }
+}
+
+@MainActor
+private final class WindowLockView: NSView {
+    private weak var configuredWindow: NSWindow?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        configureWindow()
+    }
+
+    func configureWindow() {
+        guard let window else { return }
+
+        window.styleMask.remove(.resizable)
+        window.styleMask.remove(.fullScreen)
+        window.collectionBehavior.insert(.fullScreenDisallowsTiling)
+        window.standardWindowButton(.zoomButton)?.isEnabled = false
+        window.standardWindowButton(.zoomButton)?.isHidden = false
+
+        guard configuredWindow !== window else {
+            window.contentMinSize = NSSize(width: 1_400, height: 820)
+            window.contentMaxSize = NSSize(width: 1_400, height: 820)
+            return
+        }
+
+        configuredWindow = window
+        window.setContentSize(NSSize(width: 1_400, height: 820))
+        window.contentMinSize = NSSize(width: 1_400, height: 820)
+        window.contentMaxSize = NSSize(width: 1_400, height: 820)
+        window.minSize = window.frame.size
+        window.maxSize = window.frame.size
     }
 }
 
@@ -70,8 +113,9 @@ private final class MenuBarController: NSObject, NSMenuDelegate {
     }
 
     @objc private func openMainWindow() {
-        NSApp.activate(ignoringOtherApps: true)
+        _ = NSApp.setActivationPolicy(.regular)
         openWindow?()
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     @objc private func toggleControl() {
@@ -104,23 +148,42 @@ struct ContentView: View {
                 header
 
                 HStack(alignment: .top, spacing: 18) {
-                    leftColumn.frame(width: 250)
-                    controllerCard.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    rightColumn.frame(width: 360)
+                    leftColumn.frame(width: 350)
+                    controllerCard.frame(width: 600, height: 480, alignment: .top)
+                    rightColumn.frame(width: 350)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
             .padding(24)
         }
-        .frame(minWidth: 1_180, idealWidth: 1_350, minHeight: 820, idealHeight: 900)
+        .frame(minWidth: 1_400, idealWidth: 1_400, minHeight: 820, idealHeight: 820)
+        .windowResizeBehavior(.disabled)
         .onAppear {
             let isVisible = UserDefaults.standard.object(forKey: "dualpad.backgroundMode") as? Bool ?? true
             MenuBarController.shared.configure(manager: pad, isVisible: isVisible) {
+                backgroundMode = false
+                _ = NSApp.setActivationPolicy(.regular)
                 openWindow(id: "main")
             }
+            applyBackgroundMode(isVisible)
         }
         .onChange(of: backgroundMode) { _, isVisible in
             MenuBarController.shared.setVisible(isVisible)
+            applyBackgroundMode(isVisible)
+        }
+    }
+
+    private func applyBackgroundMode(_ isEnabled: Bool) {
+        guard isEnabled else {
+            _ = NSApp.setActivationPolicy(.regular)
+            return
+        }
+
+        _ = NSApp.setActivationPolicy(.accessory)
+        DispatchQueue.main.async {
+            guard UserDefaults.standard.bool(forKey: "dualpad.backgroundMode"),
+                  NSApp.activationPolicy() == .accessory else { return }
+            NSApp.windows.first(where: { $0.isVisible && $0.title == "DualPad" })?.close()
         }
     }
 
@@ -144,35 +207,17 @@ struct ContentView: View {
     }
 
     private var header: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 14) {
-                brand
-                Spacer(minLength: 12)
-                connectionBadge
-                backgroundModeToggle
-                activationToggle
-            }
-
-            VStack(alignment: .leading, spacing: 14) {
-                brand
-                HStack(spacing: 10) {
-                    connectionBadge
-                    Spacer(minLength: 0)
-                    backgroundModeToggle
-                    activationToggle
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        brand
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var brand: some View {
         HStack(spacing: 14) {
-            Image(systemName: "gamecontroller.fill")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(accent)
+            Image(nsImage: NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath))
+                .resizable()
+                .scaledToFit()
                 .frame(width: 46, height: 46)
-                .glassEffect(.regular.tint(accent.opacity(0.14)), in: .rect(cornerRadius: 15))
+                .clipShape(.rect(cornerRadius: 11))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("DualPad")
@@ -198,30 +243,52 @@ struct ContentView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .fixedSize(horizontal: true, vertical: false)
-        .background(.regularMaterial, in: .rect(cornerRadius: 16))
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var backgroundModeToggle: some View {
-        Toggle("Segundo plano", isOn: $backgroundMode)
-            .toggleStyle(.switch)
-            .fixedSize()
-            .padding(.horizontal, 13)
-            .padding(.vertical, 9)
-            .glassEffect(.regular, in: .capsule)
-            .help("Mantém o DualPad disponível pelo ícone na barra de menus.")
+        HStack {
+            Text("Segundo plano")
+            Spacer()
+            Toggle("Segundo plano", isOn: $backgroundMode)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .fixedSize()
+                .help("Mantém o DualPad disponível pelo ícone na barra de menus.")
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private var activationToggle: some View {
-        Toggle("Ativo", isOn: $pad.settings.enabled)
-            .toggleStyle(.switch)
-            .fixedSize()
-            .padding(.horizontal, 13)
-            .padding(.vertical, 9)
-            .glassEffect(.regular, in: .capsule)
+        HStack {
+            Text("Ativo")
+            Spacer()
+            Toggle("Ativo", isOn: $pad.settings.enabled)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .fixedSize()
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var controllerStatusCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            connectionBadge
+            Divider()
+            VStack(alignment: .leading, spacing: 10) {
+                backgroundModeToggle
+                activationToggle
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial, in: .rect(cornerRadius: 24))
+        .overlay {
+            RoundedRectangle(cornerRadius: 24)
+                .strokeBorder(Color.primary.opacity(0.07), lineWidth: 1)
+        }
     }
 
     private var leftColumn: some View {
@@ -231,6 +298,14 @@ struct ContentView: View {
                     settingSlider("Velocidade", value: $pad.settings.mouseSpeed, range: 300...3000, valueText: String(format: "%.0f px/s", pad.settings.mouseSpeed), icon: "cursorarrow")
                     settingSlider("Zona morta", value: $pad.settings.deadzone, range: 0.02...0.5, valueText: String(format: "%.2f", pad.settings.deadzone), icon: "circle.dashed")
                     settingSlider("Aceleração", value: $pad.settings.acceleration, range: 1...3, valueText: String(format: "%.1f×", pad.settings.acceleration), icon: "speedometer")
+                }
+            }
+
+            card(title: "SCROLL", subtitle: "Stick direito") {
+                VStack(spacing: 12) {
+                    settingSlider("Velocidade", value: $pad.settings.scrollSpeed, range: 200...3000, valueText: String(format: "%.0f px/s", pad.settings.scrollSpeed), icon: "arrow.up.and.down")
+                    Toggle("Inverter direção", isOn: $pad.settings.invertScroll)
+                        .toggleStyle(.switch)
                 }
             }
 
@@ -255,13 +330,7 @@ struct ContentView: View {
 
     private var rightColumn: some View {
         VStack(spacing: 16) {
-            card(title: "SCROLL", subtitle: "Stick direito") {
-                VStack(spacing: 12) {
-                    settingSlider("Velocidade", value: $pad.settings.scrollSpeed, range: 200...3000, valueText: String(format: "%.0f px/s", pad.settings.scrollSpeed), icon: "arrow.up.and.down")
-                    Toggle("Inverter direção", isOn: $pad.settings.invertScroll)
-                        .toggleStyle(.switch)
-                }
-            }
+            controllerStatusCard
 
             card(title: "BOTÕES", subtitle: "Escolha o que cada botão faz") {
                 VStack(spacing: 3) {
@@ -346,7 +415,8 @@ struct ContentView: View {
             .background(.regularMaterial, in: .capsule)
         }
         .padding(18)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .frame(width: 600, height: 480, alignment: .top)
+        .fixedSize(horizontal: true, vertical: true)
         .background(.regularMaterial, in: .rect(cornerRadius: 28))
         .overlay {
             RoundedRectangle(cornerRadius: 28)

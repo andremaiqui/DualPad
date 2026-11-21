@@ -17,6 +17,7 @@ final class ControllerManager: ObservableObject {
         didSet {
             save()
             if !settings.enabled { releaseEverything() }
+            updateInputActivity()
         }
     }
 
@@ -26,6 +27,7 @@ final class ControllerManager: ObservableObject {
     private var pad: GCDualSenseGamepad?
     private var controller: GCController?
     private var timer: Timer?
+    private var inputActivity: (any NSObjectProtocol)?
     private var lastTick = ProcessInfo.processInfo.systemUptime
     private var lastBatteryCheck: TimeInterval = 0
 
@@ -102,6 +104,7 @@ final class ControllerManager: ObservableObject {
 
         controller = c
         pad = ds
+        updateInputActivity()
         controllerName = c.vendorName ?? "DualSense"
         updateBattery()
 
@@ -141,6 +144,7 @@ final class ControllerManager: ObservableObject {
         releaseEverything()
         controller = nil
         pad = nil
+        updateInputActivity()
         controllerName = nil
         batteryText = nil
         GCController.startWirelessControllerDiscovery(completionHandler: nil)
@@ -153,6 +157,20 @@ final class ControllerManager: ObservableObject {
         case .charging: batteryText = "\(pct)% (carregando)"
         case .full: batteryText = "100%"
         default: batteryText = "\(pct)%"
+        }
+    }
+
+    private func updateInputActivity() {
+        let shouldStayResponsive = settings.enabled && pad != nil
+
+        if shouldStayResponsive, inputActivity == nil {
+            inputActivity = ProcessInfo.processInfo.beginActivity(
+                options: .userInitiatedAllowingIdleSystemSleep,
+                reason: "DualPad processa entrada ativa do controle"
+            )
+        } else if !shouldStayResponsive, let inputActivity {
+            ProcessInfo.processInfo.endActivity(inputActivity)
+            self.inputActivity = nil
         }
     }
 
