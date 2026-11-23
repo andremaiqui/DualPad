@@ -5,6 +5,73 @@ import ApplicationServices
 @preconcurrency import GameController
 
 @MainActor
+final class ControllerTestState {
+    let buttons = ControllerButtonTestState()
+    let analog = ControllerAnalogTestState()
+
+    func setPressed(_ pressed: Bool, for button: PadButton) {
+        buttons.setPressed(pressed, for: button)
+    }
+
+    func updateInput(_ newValue: ControllerInputState) {
+        analog.updateInput(newValue)
+    }
+
+    func resetInput() {
+        analog.reset()
+    }
+
+    func reset() {
+        buttons.reset()
+        analog.reset()
+    }
+}
+
+@MainActor
+final class ControllerButtonTestState: ObservableObject {
+    @Published private(set) var pressedButtons: Set<PadButton> = []
+
+    func setPressed(_ pressed: Bool, for button: PadButton) {
+        if pressed {
+            guard pressedButtons.insert(button).inserted else { return }
+        } else {
+            guard pressedButtons.remove(button) != nil else { return }
+        }
+    }
+
+    func reset() {
+        if !pressedButtons.isEmpty { pressedButtons.removeAll() }
+    }
+}
+
+@MainActor
+final class ControllerAnalogTestState: ObservableObject {
+    @Published private(set) var input = ControllerInputState.zero
+
+    func updateInput(_ newValue: ControllerInputState) {
+        let rounded = ControllerInputState(
+            leftStickX: newValue.leftStickX.roundedToHundredths,
+            leftStickY: newValue.leftStickY.roundedToHundredths,
+            rightStickX: newValue.rightStickX.roundedToHundredths,
+            rightStickY: newValue.rightStickY.roundedToHundredths,
+            leftTrigger: newValue.leftTrigger.roundedToHundredths,
+            rightTrigger: newValue.rightTrigger.roundedToHundredths
+        )
+        guard input != rounded else { return }
+        input = rounded
+    }
+
+    func reset() {
+        guard input != .zero else { return }
+        input = .zero
+    }
+}
+
+private extension Double {
+    var roundedToHundredths: Double { (self * 100).rounded() / 100 }
+}
+
+@MainActor
 final class ControllerManager: ObservableObject {
 
     // MARK: Estado exposto à interface
@@ -13,15 +80,16 @@ final class ControllerManager: ObservableObject {
     @Published var batteryText: String?
     @Published var accessibilityGranted = AXIsProcessTrusted()
     @Published var lastPressed = "—"
-    @Published private(set) var pressedButtons: Set<PadButton> = []
-    @Published private(set) var controllerInput = ControllerInputState.zero
+    let testState = ControllerTestState()
     @Published var isTestingController = false {
         didSet {
             if isTestingController && !oldValue {
                 releaseEverything()
             } else if !isTestingController {
-                controllerInput = .zero
+                testState.resetInput()
             }
+            updateInputActivity()
+            updateTimerFrequency()
         }
     }
     @Published var settings: PadSettings {
@@ -29,6 +97,7 @@ final class ControllerManager: ObservableObject {
             save()
             if !settings.enabled { releaseEverything() }
             updateInputActivity()
+            updateTimerFrequency()
         }
     }
 
@@ -38,6 +107,7 @@ final class ControllerManager: ObservableObject {
     private var pad: GCDualSenseGamepad?
     private var controller: GCController?
     private var timer: Timer?
+    private var timerInterval: TimeInterval = 0
     private var inputActivity: (any NSObjectProtocol)?
     private var lastTick = ProcessInfo.processInfo.systemUptime
     private var lastBatteryCheck: TimeInterval = 0
@@ -86,11 +156,7 @@ final class ControllerManager: ObservableObject {
             GCController.startWirelessControllerDiscovery(completionHandler: nil)
         }
 
-        let t = Timer(timeInterval: 1.0 / 120.0, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.tick() }
-        }
-        RunLoop.main.add(t, forMode: .common)
-        timer = t
+        updateTimerFrequency()
     }
 
     // MARK: Permissão de Acessibilidade
@@ -126,6 +192,7 @@ final class ControllerManager: ObservableObject {
         controller = c
         pad = ds
         updateInputActivity()
+        updateTimerFrequency()
         controllerName = c.vendorName ?? "DualSense"
         updateBattery()
 
@@ -168,8 +235,8 @@ final class ControllerManager: ObservableObject {
         updateInputActivity()
         controllerName = nil
         batteryText = nil
-        pressedButtons.removeAll()
-        controllerInput = .zero
+        testState.reset()
+        updateTimerFrequency()
         GCController.startWirelessControllerDiscovery(completionHandler: nil)
     }
 
@@ -184,7 +251,7 @@ final class ControllerManager: ObservableObject {
     }
 
     private func updateInputActivity() {
-        let shouldStayResponsive = settings.enabled && pad != nil
+        let shouldStayResponsive = settings.enabled && pad != nil && !isTestingController
 
         if shouldStayResponsive, inputActivity == nil {
             inputActivity = ProcessInfo.processInfo.beginActivity(
@@ -206,14 +273,12 @@ final class ControllerManager: ObservableObject {
     // MARK: Botões
 
     private func buttonChanged(_ id: PadButton, pressed: Bool) {
-        if pressed {
-            pressedButtons.insert(id)
-        } else {
-            pressedButtons.remove(id)
-        }
+        testState.setPressed(pressed, for: id)
         lastButton = id
         lastButtonPressed = pressed
-        lastPressed = "\(id.title) \(AppLanguage.text(pressed ? "pressionado" : "solto"))"
+        if !isTestingController {
+            lastPressed = "\(id.title) \(AppLanguage.text(pressed ? "pressionado" : "solto"))"
+        }
         guard settings.enabled, !isTestingController else { return }
 
         switch settings.action(for: id) {
@@ -262,23 +327,29 @@ final class ControllerManager: ObservableObject {
         lastTick = now
 
         guard let ds = pad else {
-            if controllerInput != .zero { controllerInput = .zero }
+            testState.resetInput()
             return
         }
 
-        if isTestingController, now - lastDiagnosticsUpdate >= 1.0 / 30.0 {
+        if isTestingController {
+            guard now - lastDiagnosticsUpdate >= 1.0 / 30.0 else { return }
             lastDiagnosticsUpdate = now
-            controllerInput = ControllerInputState(
+            testState.updateInput(ControllerInputState(
                 leftStickX: Double(ds.leftThumbstick.xAxis.value),
                 leftStickY: Double(ds.leftThumbstick.yAxis.value),
                 rightStickX: Double(ds.rightThumbstick.xAxis.value),
                 rightStickY: Double(ds.rightThumbstick.yAxis.value),
                 leftTrigger: Double(ds.leftTrigger.value),
                 rightTrigger: Double(ds.rightTrigger.value)
-            )
+            ))
+            if now - lastBatteryCheck > 10 {
+                lastBatteryCheck = now
+                updateBattery()
+            }
+            return
         }
 
-        guard settings.enabled, !isTestingController else { return }
+        guard settings.enabled else { return }
 
         // Stick esquerdo -> cursor
         let l = shaped(Double(ds.leftThumbstick.xAxis.value),
@@ -303,6 +374,26 @@ final class ControllerManager: ObservableObject {
             lastBatteryCheck = now
             updateBattery()
         }
+    }
+
+    private func updateTimerFrequency() {
+        let interval: TimeInterval
+        if pad == nil || (!settings.enabled && !isTestingController) {
+            interval = 1.0
+        } else if isTestingController {
+            interval = 1.0 / 30.0
+        } else {
+            interval = 1.0 / 120.0
+        }
+
+        guard interval != timerInterval else { return }
+        timer?.invalidate()
+        timerInterval = interval
+        let newTimer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.tick() }
+        }
+        RunLoop.main.add(newTimer, forMode: .common)
+        timer = newTimer
     }
 
     /// Zona morta radial + curva de aceleração.
