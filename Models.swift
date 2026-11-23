@@ -59,6 +59,7 @@ enum AppLanguage {
         "MAPEAMENTO": "MAPPING",
         "Visão geral do controle": "Controller overview",
         "Aguardando botão": "Waiting for button",
+        "Testar controle": "Test controller",
         "Imagem do controle indisponível": "Controller image unavailable",
         "DualSenseController.png não foi encontrada no app.": "DualSenseController.png could not be found in the app.",
         "Altere qualquer ação pelos menus de cada botão.": "Change any action using the menu for each button.",
@@ -119,6 +120,17 @@ enum PadButton: String, CaseIterable, Codable, Identifiable {
         case .touchpad: return AppLanguage.text("Clique do touchpad")
         }
     }
+}
+
+struct ControllerInputState: Equatable {
+    var leftStickX = 0.0
+    var leftStickY = 0.0
+    var rightStickX = 0.0
+    var rightStickY = 0.0
+    var leftTrigger = 0.0
+    var rightTrigger = 0.0
+
+    static let zero = ControllerInputState()
 }
 
 // MARK: - Atalhos de teclado
