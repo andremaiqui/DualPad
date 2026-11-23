@@ -13,6 +13,17 @@ final class ControllerManager: ObservableObject {
     @Published var batteryText: String?
     @Published var accessibilityGranted = AXIsProcessTrusted()
     @Published var lastPressed = "—"
+    @Published private(set) var pressedButtons: Set<PadButton> = []
+    @Published private(set) var controllerInput = ControllerInputState.zero
+    @Published var isTestingController = false {
+        didSet {
+            if isTestingController && !oldValue {
+                releaseEverything()
+            } else if !isTestingController {
+                controllerInput = .zero
+            }
+        }
+    }
     @Published var settings: PadSettings {
         didSet {
             save()
@@ -30,6 +41,7 @@ final class ControllerManager: ObservableObject {
     private var inputActivity: (any NSObjectProtocol)?
     private var lastTick = ProcessInfo.processInfo.systemUptime
     private var lastBatteryCheck: TimeInterval = 0
+    private var lastDiagnosticsUpdate: TimeInterval = 0
 
     // Teclas seguradas, para repetir (setas, por exemplo).
     private struct Held { var shortcut: Shortcut; var nextRepeat: TimeInterval }
@@ -156,6 +168,8 @@ final class ControllerManager: ObservableObject {
         updateInputActivity()
         controllerName = nil
         batteryText = nil
+        pressedButtons.removeAll()
+        controllerInput = .zero
         GCController.startWirelessControllerDiscovery(completionHandler: nil)
     }
 
@@ -192,10 +206,15 @@ final class ControllerManager: ObservableObject {
     // MARK: Botões
 
     private func buttonChanged(_ id: PadButton, pressed: Bool) {
+        if pressed {
+            pressedButtons.insert(id)
+        } else {
+            pressedButtons.remove(id)
+        }
         lastButton = id
         lastButtonPressed = pressed
         lastPressed = "\(id.title) \(AppLanguage.text(pressed ? "pressionado" : "solto"))"
-        guard settings.enabled else { return }
+        guard settings.enabled, !isTestingController else { return }
 
         switch settings.action(for: id) {
         case .none:
@@ -222,7 +241,7 @@ final class ControllerManager: ObservableObject {
     // MARK: Touchpad
 
     private func touchpadMoved(x: Float, y: Float) {
-        guard settings.enabled, settings.touchpadMouse else { return }
+        guard settings.enabled, !isTestingController, settings.touchpadMouse else { return }
 
         // (0, 0) significa "sem dedo" (ou dedo exatamente no centro).
         guard x != 0 || y != 0 else { lastTouch = nil; return }
@@ -242,7 +261,24 @@ final class ControllerManager: ObservableObject {
         let dt = min(now - lastTick, 0.05)
         lastTick = now
 
-        guard settings.enabled, let ds = pad else { return }
+        guard let ds = pad else {
+            if controllerInput != .zero { controllerInput = .zero }
+            return
+        }
+
+        if isTestingController, now - lastDiagnosticsUpdate >= 1.0 / 30.0 {
+            lastDiagnosticsUpdate = now
+            controllerInput = ControllerInputState(
+                leftStickX: Double(ds.leftThumbstick.xAxis.value),
+                leftStickY: Double(ds.leftThumbstick.yAxis.value),
+                rightStickX: Double(ds.rightThumbstick.xAxis.value),
+                rightStickY: Double(ds.rightThumbstick.yAxis.value),
+                leftTrigger: Double(ds.leftTrigger.value),
+                rightTrigger: Double(ds.rightTrigger.value)
+            )
+        }
+
+        guard settings.enabled, !isTestingController else { return }
 
         // Stick esquerdo -> cursor
         let l = shaped(Double(ds.leftThumbstick.xAxis.value),

@@ -166,6 +166,15 @@ private final class MenuBarController: NSObject, NSMenuDelegate {
     }
 }
 
+private enum DualSenseImageAsset {
+    static let image: NSImage? = {
+        guard let imageURL = Bundle.main.url(forResource: "DualSenseController", withExtension: "png") else {
+            return nil
+        }
+        return NSImage(contentsOf: imageURL)
+    }()
+}
+
 struct ContentView: View {
     @EnvironmentObject private var pad: ControllerManager
     @Environment(\.openWindow) private var openWindow
@@ -372,16 +381,16 @@ struct ContentView: View {
 
             card(title: AppLanguage.text("BOTÕES"), subtitle: AppLanguage.text("Escolha o que cada botão faz")) {
                 VStack(spacing: 3) {
-                    mappingRow(.l2, symbol: "l2.button.roundedtop.horizontal")
-                    mappingRow(.l1, symbol: "l1.button.roundedtop.horizontal")
+                    mappingRow(.l2, symbol: "L2")
+                    mappingRow(.l1, symbol: "L1")
                     mappingRow(.dpadUp, symbol: "arrow.up")
                     mappingRow(.dpadLeft, symbol: "arrow.left")
                     mappingRow(.dpadDown, symbol: "arrow.down")
                     mappingRow(.dpadRight, symbol: "arrow.right")
                     mappingRow(.l3, symbol: "l.joystick.press.down")
                     Divider().overlay(Color.primary.opacity(0.1)).padding(.vertical, 2)
-                    mappingRow(.r2, symbol: "r2.button.roundedtop.horizontal")
-                    mappingRow(.r1, symbol: "r1.button.roundedtop.horizontal")
+                    mappingRow(.r2, symbol: "R2")
+                    mappingRow(.r1, symbol: "R1")
                     mappingRow(.triangle, symbol: "triangle")
                     mappingRow(.circle, symbol: "circle")
                     mappingRow(.cross, symbol: "xmark")
@@ -415,22 +424,54 @@ struct ContentView: View {
                         .font(.title3.weight(.semibold))
                 }
                 Spacer()
-                Text(pad.lastPressed == "—" ? AppLanguage.text("Aguardando botão") : pad.lastPressed)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 11)
-                    .padding(.vertical, 7)
-                    .background(.regularMaterial, in: .capsule)
+                Toggle(AppLanguage.text("Testar controle"), isOn: $pad.isTestingController)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .fixedSize()
             }
 
-            if let imageURL = Bundle.main.url(forResource: "DualSenseController", withExtension: "png"),
-               let controllerImage = NSImage(contentsOf: imageURL) {
-                Image(nsImage: controllerImage)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: 560)
-                    .aspectRatio(16.0 / 9.0, contentMode: .fit)
-                    .shadow(color: .black.opacity(0.16), radius: 18, y: 10)
+            if let controllerImage = DualSenseImageAsset.image {
+                GeometryReader { proxy in
+                    let imageSize = CGSize(width: proxy.size.width, height: proxy.size.width * 9 / 16)
+                    ZStack {
+                        Image(nsImage: controllerImage)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: imageSize.width, height: imageSize.height)
+                            .shadow(color: .black.opacity(0.16), radius: 18, y: 10)
+
+                        if pad.isTestingController {
+                            ForEach(controllerHighlightButtons, id: \.self) { button in
+                                ControllerButtonHighlight(button: button)
+                                    .frame(
+                                        width: imageSize.width * button.highlightSize.width,
+                                        height: imageSize.height * button.highlightSize.height
+                                    )
+                                    .position(
+                                        x: imageSize.width * button.highlightPosition.x,
+                                        y: imageSize.height * button.highlightPosition.y
+                                    )
+                                    .transition(.opacity.combined(with: .scale(scale: 0.72)))
+                            }
+                            .animation(.easeOut(duration: 0.16), value: pad.pressedButtons)
+
+                            stickPositionMarker(x: pad.controllerInput.leftStickX, y: pad.controllerInput.leftStickY)
+                                .position(
+                                    x: imageSize.width * 0.405 + pad.controllerInput.leftStickX * imageSize.width * 0.026,
+                                    y: imageSize.height * 0.49 - pad.controllerInput.leftStickY * imageSize.height * 0.045
+                                )
+                            stickPositionMarker(x: pad.controllerInput.rightStickX, y: pad.controllerInput.rightStickY)
+                                .position(
+                                    x: imageSize.width * 0.595 + pad.controllerInput.rightStickX * imageSize.width * 0.026,
+                                    y: imageSize.height * 0.49 - pad.controllerInput.rightStickY * imageSize.height * 0.045
+                                )
+                        }
+                    }
+                    .frame(width: imageSize.width, height: imageSize.height)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .frame(maxWidth: 560)
+                .aspectRatio(16.0 / 9.0, contentMode: .fit)
             } else {
                 ContentUnavailableView(
                     AppLanguage.text("Imagem do controle indisponível"),
@@ -441,12 +482,25 @@ struct ContentView: View {
                 .aspectRatio(16.0 / 9.0, contentMode: .fit)
             }
 
-            HStack(spacing: 8) {
-                Image(systemName: "info.circle")
-                    .foregroundStyle(accent)
-                Text(AppLanguage.text("Altere qualquer ação pelos menus de cada botão."))
-                    .font(.caption)
+            Group {
+                if pad.isTestingController {
+                    HStack(spacing: 12) {
+                        diagnosticValue("L", x: pad.controllerInput.leftStickX, y: pad.controllerInput.leftStickY)
+                        diagnosticValue("R", x: pad.controllerInput.rightStickX, y: pad.controllerInput.rightStickY)
+                        Text("L2 \(pad.controllerInput.leftTrigger, format: .number.precision(.fractionLength(2)))")
+                        Text("R2 \(pad.controllerInput.rightTrigger, format: .number.precision(.fractionLength(2)))")
+                    }
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
                     .foregroundStyle(.secondary)
+                } else {
+                    HStack(spacing: 8) {
+                        Image(systemName: "info.circle")
+                            .foregroundStyle(accent)
+                        Text(AppLanguage.text("Altere qualquer ação pelos menus de cada botão."))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -460,6 +514,24 @@ struct ContentView: View {
             RoundedRectangle(cornerRadius: 28)
                 .strokeBorder(Color.primary.opacity(0.07), lineWidth: 1)
         }
+    }
+
+    private var controllerHighlightButtons: [PadButton] {
+        PadButton.allCases.filter { pad.pressedButtons.contains($0) }
+    }
+
+    private func stickPositionMarker(x: Double, y: Double) -> some View {
+        Circle()
+            .fill(accent.opacity(hypot(x, y) > 0.04 ? 0.95 : 0.45))
+            .frame(width: 8, height: 8)
+            .overlay(Circle().stroke(.white.opacity(0.8), lineWidth: 1))
+            .shadow(color: accent.opacity(0.8), radius: 4)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    private func diagnosticValue(_ label: String, x: Double, y: Double) -> some View {
+        Text("\(label) X \(x, format: .number.precision(.significantDigits(2))) Y \(y, format: .number.precision(.significantDigits(2)))")
     }
 
     private var accessibilityCard: some View {
@@ -537,10 +609,19 @@ struct ContentView: View {
 
     private func mappingRow(_ button: PadButton, symbol: String) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: symbol)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(accent)
-                .frame(width: 17)
+            Group {
+                if ["L1", "R1", "L2", "R2"].contains(symbol) {
+                    Text(symbol)
+                        .font(.system(size: 8, weight: .semibold, design: .rounded))
+                        .frame(width: 14, height: 10)
+                        .overlay(RoundedRectangle(cornerRadius: 2.5).stroke(accent, lineWidth: 0.9))
+                } else {
+                    Image(systemName: symbol)
+                        .font(.system(size: 11, weight: .semibold))
+                }
+            }
+            .foregroundStyle(accent)
+            .frame(width: 17, height: 17)
             Text(button.title)
                 .font(.system(size: 11, weight: .medium))
                 .lineLimit(1)
@@ -562,6 +643,224 @@ struct ContentView: View {
         .labelsHidden()
         .controlSize(.small)
         .id(languageCode)
+    }
+}
+
+private struct ControllerButtonHighlight: View {
+    let button: PadButton
+
+    private let playStationBlue = Color(red: 0.0, green: 0.44, blue: 0.84)
+
+    var body: some View {
+        GeometryReader { proxy in
+            let outline = button.highlightPath(in: CGRect(origin: .zero, size: proxy.size))
+
+            ZStack {
+                outline
+                    .fill(playStationBlue.opacity(0.24))
+                outline
+                    .stroke(playStationBlue, lineWidth: 1)
+                    .shadow(color: playStationBlue.opacity(0.7), radius: 3)
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+private extension PadButton {
+    func highlightPath(in rect: CGRect) -> Path {
+        switch self {
+        case .cross, .circle, .square, .triangle, .l3, .r3:
+            return Path(ellipseIn: rect.insetBy(dx: rect.width * 0.04, dy: rect.height * 0.04))
+        case .l1:
+            return shoulderBumperPath(in: rect, isLeft: true)
+        case .l2:
+            return shoulderButtonPath(in: rect, isLeft: true)
+        case .r1:
+            return shoulderBumperPath(in: rect, isLeft: false)
+        case .r2:
+            return shoulderButtonPath(in: rect, isLeft: false)
+        case .dpadUp:
+            return dpadVerticalKeyPath(in: rect, pointsDown: false)
+        case .dpadDown:
+            return dpadVerticalKeyPath(in: rect, pointsDown: true)
+        case .dpadLeft:
+            return dpadSideKeyPath(in: rect, pointsRight: false)
+        case .dpadRight:
+            return dpadSideKeyPath(in: rect, pointsRight: true)
+        case .options, .create:
+            var path = Path()
+            path.addRoundedRect(in: rect.insetBy(dx: 1, dy: 1), cornerSize: CGSize(width: rect.width * 0.22, height: rect.height * 0.22))
+            return path
+        case .ps:
+            return Path(ellipseIn: rect.insetBy(dx: rect.width * 0.08, dy: rect.height * 0.08))
+        case .touchpad:
+            var path = Path()
+            path.move(to: CGPoint(x: rect.minX + rect.width * 0.035, y: rect.minY + rect.height * 0.18))
+            path.addQuadCurve(
+                to: CGPoint(x: rect.minX + rect.width * 0.13, y: rect.minY + rect.height * 0.025),
+                control: CGPoint(x: rect.minX + rect.width * 0.045, y: rect.minY + rect.height * 0.025)
+            )
+            path.addQuadCurve(
+                to: CGPoint(x: rect.minX + rect.width * 0.87, y: rect.minY + rect.height * 0.025),
+                control: CGPoint(x: rect.midX, y: rect.minY - rect.height * 0.015)
+            )
+            path.addQuadCurve(
+                to: CGPoint(x: rect.minX + rect.width * 0.965, y: rect.minY + rect.height * 0.18),
+                control: CGPoint(x: rect.maxX - rect.width * 0.045, y: rect.minY + rect.height * 0.025)
+            )
+            path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.91, y: rect.minY + rect.height * 0.82))
+            path.addQuadCurve(
+                to: CGPoint(x: rect.minX + rect.width * 0.82, y: rect.maxY - rect.height * 0.025),
+                control: CGPoint(x: rect.maxX - rect.width * 0.045, y: rect.maxY - rect.height * 0.025)
+            )
+            path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.18, y: rect.maxY - rect.height * 0.025))
+            path.addQuadCurve(
+                to: CGPoint(x: rect.minX + rect.width * 0.09, y: rect.minY + rect.height * 0.82),
+                control: CGPoint(x: rect.minX + rect.width * 0.045, y: rect.maxY - rect.height * 0.025)
+            )
+            path.closeSubpath()
+            return path
+        }
+    }
+
+    private func shoulderButtonCapPath(in rect: CGRect) -> Path {
+        Path(roundedRect: rect.insetBy(dx: rect.width * 0.16, dy: rect.height * 0.08),
+             cornerSize: CGSize(width: rect.width * 0.28, height: rect.width * 0.28))
+    }
+
+    private func shoulderBumperPath(in rect: CGRect, isLeft: Bool) -> Path {
+        // Follow the slanted, softly rounded front edge of each L1/R1 bumper.
+        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            let localX = isLeft ? x : 1 - x
+            return CGPoint(x: rect.minX + localX * rect.width,
+                           y: rect.minY + y * rect.height)
+        }
+
+        var path = Path()
+        path.move(to: point(0.025, 0.76))
+        path.addQuadCurve(to: point(0.20, 0.35), control: point(0.035, 0.45))
+        path.addLine(to: point(0.79, 0.035))
+        path.addQuadCurve(to: point(0.97, 0.24), control: point(0.95, 0.025))
+        path.addLine(to: point(0.98, 0.69))
+        path.addQuadCurve(to: point(0.84, 0.91), control: point(0.98, 0.88))
+        path.addLine(to: point(0.18, 0.98))
+        path.addQuadCurve(to: point(0.025, 0.76), control: point(0.02, 0.96))
+        path.closeSubpath()
+        return path
+    }
+
+    private func shoulderButtonPath(in rect: CGRect, isLeft: Bool) -> Path {
+        let points: [CGPoint] = isLeft
+            ? [
+                CGPoint(x: 0.04, y: 0.72), CGPoint(x: 0.76, y: 0.08),
+                CGPoint(x: 0.96, y: 0.28), CGPoint(x: 0.98, y: 0.82),
+                CGPoint(x: 0.18, y: 0.98)
+            ]
+            : [
+                CGPoint(x: 0.24, y: 0.08), CGPoint(x: 0.96, y: 0.72),
+                CGPoint(x: 0.82, y: 0.98), CGPoint(x: 0.02, y: 0.82),
+                CGPoint(x: 0.04, y: 0.28)
+            ]
+
+        var path = Path()
+        guard let first = points.first else { return path }
+        path.move(to: CGPoint(x: rect.minX + first.x * rect.width, y: rect.minY + first.y * rect.height))
+        for point in points.dropFirst() {
+            path.addLine(to: CGPoint(x: rect.minX + point.x * rect.width, y: rect.minY + point.y * rect.height))
+        }
+        path.closeSubpath()
+        return path
+    }
+
+    private func dpadVerticalKeyPath(in rect: CGRect, pointsDown: Bool) -> Path {
+        // The vertical D-pad caps mirror the side caps and taper into the hub.
+        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            let localY = pointsDown ? 1 - y : y
+            return CGPoint(x: rect.minX + x * rect.width,
+                           y: rect.minY + localY * rect.height)
+        }
+
+        var path = Path()
+        path.move(to: point(0.50, 0.965))
+        path.addQuadCurve(to: point(0.82, 0.76), control: point(0.66, 0.96))
+        path.addLine(to: point(0.95, 0.28))
+        path.addQuadCurve(to: point(0.78, 0.055), control: point(0.98, 0.08))
+        path.addLine(to: point(0.22, 0.055))
+        path.addQuadCurve(to: point(0.05, 0.28), control: point(0.02, 0.08))
+        path.addLine(to: point(0.18, 0.76))
+        path.addQuadCurve(to: point(0.50, 0.965), control: point(0.34, 0.96))
+        path.closeSubpath()
+        return path
+    }
+
+    private func dpadSideKeyPath(in rect: CGRect, pointsRight: Bool) -> Path {
+        // Match the DualSense side caps: rounded outer edge, narrowing toward
+        // the shared center of the cross. Mirror one path for both directions.
+        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            let localX = pointsRight ? 1 - x : x
+            return CGPoint(x: rect.minX + localX * rect.width,
+                           y: rect.minY + y * rect.height)
+        }
+
+        var path = Path()
+        path.move(to: point(0.035, 0.50))
+        path.addQuadCurve(to: point(0.27, 0.08), control: point(0.025, 0.18))
+        path.addQuadCurve(to: point(0.58, 0.08), control: point(0.42, 0.025))
+        path.addLine(to: point(0.93, 0.37))
+        path.addQuadCurve(to: point(0.93, 0.63), control: point(1.015, 0.50))
+        path.addLine(to: point(0.58, 0.92))
+        path.addQuadCurve(to: point(0.27, 0.92), control: point(0.42, 0.975))
+        path.addQuadCurve(to: point(0.035, 0.50), control: point(0.025, 0.82))
+        path.closeSubpath()
+        return path
+    }
+
+    var highlightPosition: CGPoint {
+        switch self {
+        case .l1: CGPoint(x: 0.319, y: 0.183)
+        case .r1: CGPoint(x: 0.681, y: 0.183)
+        case .l2: CGPoint(x: 0.300, y: 0.162)
+        case .r2: CGPoint(x: 0.700, y: 0.162)
+        case .dpadUp: CGPoint(x: 0.315, y: 0.298)
+        case .dpadDown: CGPoint(x: 0.315, y: 0.405)
+        case .dpadLeft: CGPoint(x: 0.286, y: 0.351)
+        case .dpadRight: CGPoint(x: 0.344, y: 0.351)
+        case .triangle: CGPoint(x: 0.686, y: 0.275)
+        case .square: CGPoint(x: 0.642, y: 0.350)
+        case .circle: CGPoint(x: 0.729, y: 0.350)
+        case .cross: CGPoint(x: 0.687, y: 0.426)
+        case .l3: CGPoint(x: 0.405, y: 0.49)
+        case .r3: CGPoint(x: 0.595, y: 0.49)
+        case .options: CGPoint(x: 0.638, y: 0.235)
+        case .create: CGPoint(x: 0.362, y: 0.235)
+        case .ps: CGPoint(x: 0.5, y: 0.483)
+        case .touchpad: CGPoint(x: 0.5, y: 0.278)
+        }
+    }
+
+    var highlightSize: CGSize {
+        switch self {
+        case .l2, .r2:
+            CGSize(width: 0.065, height: 0.045)
+        case .l1, .r1:
+            CGSize(width: 0.078, height: 0.030)
+        case .options, .create:
+            CGSize(width: 0.018, height: 0.05)
+        case .dpadUp, .dpadDown:
+            CGSize(width: 0.043, height: 0.077)
+        case .dpadLeft, .dpadRight:
+            CGSize(width: 0.052, height: 0.068)
+        case .triangle, .square, .circle, .cross:
+            CGSize(width: 0.04, height: 0.072)
+        case .l3, .r3:
+            CGSize(width: 0.085, height: 0.15)
+        case .ps:
+            CGSize(width: 0.042, height: 0.065)
+        case .touchpad:
+            CGSize(width: 0.255, height: 0.245)
+        }
     }
 }
 
