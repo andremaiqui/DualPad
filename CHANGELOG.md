@@ -2,6 +2,18 @@
 
 As alterações publicadas são agrupadas por versão e geradas automaticamente a partir dos commits convencionais. Consulte a página [Releases](https://github.com/andremaiqui/DualPad/releases) para baixar o app e ver as notas de cada versão.
 
+## [1.1.0](https://github.com/andremaiqui/DualPad/compare/v1.0.0...v1.1.0) (2026-11-23)
+
+
+### Novidades
+
+* add controller test mode and live input visualization ([#2](https://github.com/andremaiqui/DualPad/issues/2)) ([c79e966](https://github.com/andremaiqui/DualPad/commit/c79e9668076a3a44b8c21e10caf34159db0c803b))
+
+
+### Correções
+
+* **release:** configure root package for release please ([0392440](https://github.com/andremaiqui/DualPad/commit/0392440703621a965abab25b7e38a4854a641a9f))
+
 ## [1.0.0](https://github.com/andremaiqui/DualPad/releases/tag/v1.0.0) (2026-11-21)
 
 ### Novidades
