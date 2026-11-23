@@ -2,6 +2,22 @@
 
 As alterações publicadas são agrupadas por versão e geradas automaticamente a partir dos commits convencionais. Consulte a página [Releases](https://github.com/andremaiqui/DualPad/releases) para baixar o app e ver as notas de cada versão.
 
+## [1.1.0](https://github.com/andremaiqui/DualPad/compare/v1.0.0...v1.1.0) (2026-11-23)
+
+
+### Novidades
+
+* Adicionado o modo **Testar controle**, com realce dos botões pressionados na imagem do DualSense.
+* Exibidas as posições X/Y dos dois sticks e a intensidade dos gatilhos L2/R2 durante o teste.
+* Bloqueadas as ações de mouse, teclado e rolagem do macOS enquanto o modo de teste estiver ativo.
+
+
+### Correções
+
+* Corrigido o piscar da imagem do controle durante as entradas com carregamento em cache.
+* Ajustados tamanho, posição e contorno dos realces de L1/R1, L2/R2, D-pad, touchpad e botão PS.
+* Diferenciados os realces de L1/R1 e L2/R2 e alinhados os símbolos na lista de mapeamentos.
+
 ## [1.0.0](https://github.com/andremaiqui/DualPad/releases/tag/v1.0.0) (2026-11-21)
 
 ### Novidades
