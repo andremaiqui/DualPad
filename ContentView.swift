@@ -431,45 +431,12 @@ struct ContentView: View {
             }
 
             if let controllerImage = DualSenseImageAsset.image {
-                GeometryReader { proxy in
-                    let imageSize = CGSize(width: proxy.size.width, height: proxy.size.width * 9 / 16)
-                    ZStack {
-                        Image(nsImage: controllerImage)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: imageSize.width, height: imageSize.height)
-                            .shadow(color: .black.opacity(0.16), radius: 18, y: 10)
-
-                        if pad.isTestingController {
-                            ForEach(controllerHighlightButtons, id: \.self) { button in
-                                ControllerButtonHighlight(button: button)
-                                    .frame(
-                                        width: imageSize.width * button.highlightSize.width,
-                                        height: imageSize.height * button.highlightSize.height
-                                    )
-                                    .position(
-                                        x: imageSize.width * button.highlightPosition.x,
-                                        y: imageSize.height * button.highlightPosition.y
-                                    )
-                                    .transition(.opacity.combined(with: .scale(scale: 0.72)))
-                            }
-                            .animation(.easeOut(duration: 0.16), value: pad.pressedButtons)
-
-                            stickPositionMarker(x: pad.controllerInput.leftStickX, y: pad.controllerInput.leftStickY)
-                                .position(
-                                    x: imageSize.width * 0.405 + pad.controllerInput.leftStickX * imageSize.width * 0.026,
-                                    y: imageSize.height * 0.49 - pad.controllerInput.leftStickY * imageSize.height * 0.045
-                                )
-                            stickPositionMarker(x: pad.controllerInput.rightStickX, y: pad.controllerInput.rightStickY)
-                                .position(
-                                    x: imageSize.width * 0.595 + pad.controllerInput.rightStickX * imageSize.width * 0.026,
-                                    y: imageSize.height * 0.49 - pad.controllerInput.rightStickY * imageSize.height * 0.045
-                                )
-                        }
-                    }
-                    .frame(width: imageSize.width, height: imageSize.height)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
+                ControllerTestPreview(
+                    image: controllerImage,
+                    isTesting: pad.isTestingController,
+                    state: pad.testState,
+                    accent: accent
+                )
                 .frame(maxWidth: 560)
                 .aspectRatio(16.0 / 9.0, contentMode: .fit)
             } else {
@@ -482,29 +449,11 @@ struct ContentView: View {
                 .aspectRatio(16.0 / 9.0, contentMode: .fit)
             }
 
-            Group {
-                if pad.isTestingController {
-                    HStack(spacing: 12) {
-                        diagnosticValue("L", x: pad.controllerInput.leftStickX, y: pad.controllerInput.leftStickY)
-                        diagnosticValue("R", x: pad.controllerInput.rightStickX, y: pad.controllerInput.rightStickY)
-                        Text("L2 \(pad.controllerInput.leftTrigger, format: .number.precision(.fractionLength(2)))")
-                        Text("R2 \(pad.controllerInput.rightTrigger, format: .number.precision(.fractionLength(2)))")
-                    }
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                } else {
-                    HStack(spacing: 8) {
-                        Image(systemName: "info.circle")
-                            .foregroundStyle(accent)
-                        Text(AppLanguage.text("Altere qualquer ação pelos menus de cada botão."))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(.regularMaterial, in: .capsule)
+            ControllerTestDiagnostics(
+                isTesting: pad.isTestingController,
+                state: pad.testState.analog,
+                accent: accent
+            )
         }
         .padding(18)
         .frame(width: 600, height: 480, alignment: .top)
@@ -514,24 +463,6 @@ struct ContentView: View {
             RoundedRectangle(cornerRadius: 28)
                 .strokeBorder(Color.primary.opacity(0.07), lineWidth: 1)
         }
-    }
-
-    private var controllerHighlightButtons: [PadButton] {
-        PadButton.allCases.filter { pad.pressedButtons.contains($0) }
-    }
-
-    private func stickPositionMarker(x: Double, y: Double) -> some View {
-        Circle()
-            .fill(accent.opacity(hypot(x, y) > 0.04 ? 0.95 : 0.45))
-            .frame(width: 8, height: 8)
-            .overlay(Circle().stroke(.white.opacity(0.8), lineWidth: 1))
-            .shadow(color: accent.opacity(0.8), radius: 4)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-    }
-
-    private func diagnosticValue(_ label: String, x: Double, y: Double) -> some View {
-        Text("\(label) X \(x, format: .number.precision(.significantDigits(2))) Y \(y, format: .number.precision(.significantDigits(2)))")
     }
 
     private var accessibilityCard: some View {
@@ -643,6 +574,122 @@ struct ContentView: View {
         .labelsHidden()
         .controlSize(.small)
         .id(languageCode)
+    }
+}
+
+private struct ControllerTestPreview: View {
+    let image: NSImage
+    let isTesting: Bool
+    let state: ControllerTestState
+    let accent: Color
+
+    var body: some View {
+        GeometryReader { proxy in
+            let imageSize = CGSize(width: proxy.size.width, height: proxy.size.width * 9 / 16)
+            ZStack {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: imageSize.width, height: imageSize.height)
+                    .shadow(color: .black.opacity(0.16), radius: 18, y: 10)
+
+                if isTesting {
+                    ControllerButtonHighlights(state: state.buttons, imageSize: imageSize)
+                    ControllerStickMarkers(state: state.analog, imageSize: imageSize, accent: accent)
+                }
+            }
+            .frame(width: imageSize.width, height: imageSize.height)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+}
+
+private struct ControllerButtonHighlights: View {
+    @ObservedObject var state: ControllerButtonTestState
+    let imageSize: CGSize
+
+    var body: some View {
+        ForEach(PadButton.allCases.filter { state.pressedButtons.contains($0) }, id: \.self) { button in
+            ControllerButtonHighlight(button: button)
+                .frame(
+                    width: imageSize.width * button.highlightSize.width,
+                    height: imageSize.height * button.highlightSize.height
+                )
+                .position(
+                    x: imageSize.width * button.highlightPosition.x,
+                    y: imageSize.height * button.highlightPosition.y
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.72)))
+        }
+        .animation(.easeOut(duration: 0.16), value: state.pressedButtons)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct ControllerStickMarkers: View {
+    @ObservedObject var state: ControllerAnalogTestState
+    let imageSize: CGSize
+    let accent: Color
+
+    var body: some View {
+        stickPositionMarker(x: state.input.leftStickX, y: state.input.leftStickY)
+            .position(
+                x: imageSize.width * 0.405 + state.input.leftStickX * imageSize.width * 0.026,
+                y: imageSize.height * 0.49 - state.input.leftStickY * imageSize.height * 0.045
+            )
+        stickPositionMarker(x: state.input.rightStickX, y: state.input.rightStickY)
+            .position(
+                x: imageSize.width * 0.595 + state.input.rightStickX * imageSize.width * 0.026,
+                y: imageSize.height * 0.49 - state.input.rightStickY * imageSize.height * 0.045
+            )
+    }
+
+    private func stickPositionMarker(x: Double, y: Double) -> some View {
+        Circle()
+            .fill(accent.opacity(hypot(x, y) > 0.04 ? 0.95 : 0.45))
+            .frame(width: 8, height: 8)
+            .overlay(Circle().stroke(.white.opacity(0.8), lineWidth: 1))
+            .shadow(color: accent.opacity(0.8), radius: 4)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+}
+
+private struct ControllerTestDiagnostics: View {
+    let isTesting: Bool
+    @ObservedObject var state: ControllerAnalogTestState
+    let accent: Color
+
+    var body: some View {
+        Group {
+            if isTesting {
+                HStack(spacing: 12) {
+                    diagnosticValue("L", x: state.input.leftStickX, y: state.input.leftStickY)
+                    diagnosticValue("R", x: state.input.rightStickX, y: state.input.rightStickY)
+                    Text("L2 \(state.input.leftTrigger, format: .number.precision(.fractionLength(2)))")
+                    Text("R2 \(state.input.rightTrigger, format: .number.precision(.fractionLength(2)))")
+                }
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .foregroundStyle(.secondary)
+            } else {
+                HStack(spacing: 8) {
+                    Image(systemName: "info.circle")
+                        .foregroundStyle(accent)
+                    Text(AppLanguage.text("Altere qualquer ação pelos menus de cada botão."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.regularMaterial, in: .capsule)
+    }
+
+    private func diagnosticValue(_ label: String, x: Double, y: Double) -> some View {
+        Text("\(label) X \(x, format: .number.precision(.significantDigits(2))) Y \(y, format: .number.precision(.significantDigits(2)))")
     }
 }
 
