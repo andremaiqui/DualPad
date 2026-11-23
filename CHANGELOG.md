@@ -7,12 +7,16 @@ As alterações publicadas são agrupadas por versão e geradas automaticamente 
 
 ### Novidades
 
-* add controller test mode and live input visualization ([#2](https://github.com/andremaiqui/DualPad/issues/2)) ([c79e966](https://github.com/andremaiqui/DualPad/commit/c79e9668076a3a44b8c21e10caf34159db0c803b))
+* Adicionado o modo **Testar controle**, com realce dos botões pressionados na imagem do DualSense.
+* Exibidas as posições X/Y dos dois sticks e a intensidade dos gatilhos L2/R2 durante o teste.
+* Bloqueadas as ações de mouse, teclado e rolagem do macOS enquanto o modo de teste estiver ativo.
 
 
 ### Correções
 
-* **release:** configure root package for release please ([0392440](https://github.com/andremaiqui/DualPad/commit/0392440703621a965abab25b7e38a4854a641a9f))
+* Corrigido o piscar da imagem do controle durante as entradas com carregamento em cache.
+* Ajustados tamanho, posição e contorno dos realces de L1/R1, L2/R2, D-pad, touchpad e botão PS.
+* Diferenciados os realces de L1/R1 e L2/R2 e alinhados os símbolos na lista de mapeamentos.
 
 ## [1.0.0](https://github.com/andremaiqui/DualPad/releases/tag/v1.0.0) (2026-11-21)
 
