@@ -2,6 +2,14 @@
 
 As alterações publicadas são agrupadas por versão e geradas automaticamente a partir dos commits convencionais. Consulte a página [Releases](https://github.com/andremaiqui/DualPad/releases) para baixar o app e ver as notas de cada versão.
 
+## [1.2.1](https://github.com/andremaiqui/DualPad/compare/v1.2.0...v1.2.1) (2026-11-24)
+
+
+### Correções
+
+* declare menu bar outside click monitor ([3551588](https://github.com/andremaiqui/DualPad/commit/3551588f6fdba1741382f1a26eaaaf6a4568555e))
+* declare menu bar outside click monitor ([4f2229b](https://github.com/andremaiqui/DualPad/commit/4f2229ba45c6d4e9559b17ec45faa90bd96576c7))
+
 ## [1.2.0](https://github.com/andremaiqui/DualPad/compare/v1.1.0...v1.2.0) (2026-11-24)
 
 ### Novidades
