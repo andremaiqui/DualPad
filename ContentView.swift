@@ -101,6 +101,14 @@ private final class MenuBarController: NSObject {
         }
         popover.behavior = .transient
         popover.animates = true
+        outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, self.popover.isShown else { return }
+                self.popover.performClose(nil)
+            }
+        }
         statusItem.isVisible = false
     }
 
