@@ -67,6 +67,11 @@ final class ControllerAnalogTestState: ObservableObject {
     }
 }
 
+struct ConnectedControllerOption: Identifiable, Equatable {
+    let id: ObjectIdentifier
+    let name: String
+}
+
 private extension Double {
     var roundedToHundredths: Double { (self * 100).rounded() / 100 }
 }
@@ -79,6 +84,8 @@ final class ControllerManager: ObservableObject {
     @Published var controllerName: String?
     @Published var batteryText: String?
     @Published var batteryPercentage: Int?
+    @Published private(set) var connectedControllers: [ConnectedControllerOption] = []
+    @Published private(set) var selectedControllerID: ObjectIdentifier?
     @Published var accessibilityGranted = AXIsProcessTrusted()
     @Published var lastPressed = "—"
     let testState = ControllerTestState()
@@ -105,6 +112,7 @@ final class ControllerManager: ObservableObject {
     // MARK: Interno
 
     private let poster = EventPoster()
+    private var controllers: [GCController] = []
     private var pad: GCDualSenseGamepad?
     private var controller: GCController?
     private var timer: Timer?
@@ -188,33 +196,47 @@ final class ControllerManager: ObservableObject {
 
     private func attach(_ c: GCController) {
         // Só aceita DualSense.
-        guard let ds = c.extendedGamepad as? GCDualSenseGamepad else { return }
+        guard c.extendedGamepad is GCDualSenseGamepad else { return }
+        guard !controllers.contains(where: { $0 === c }) else { return }
+        controllers.append(c)
+        refreshConnectedControllers()
+        if controller == nil {
+            selectController(ObjectIdentifier(c))
+        }
+    }
 
+    func selectController(_ id: ObjectIdentifier) {
+        guard let c = controllers.first(where: { ObjectIdentifier($0) == id }),
+              let ds = c.extendedGamepad as? GCDualSenseGamepad,
+              controller !== c else { return }
+
+        releaseEverything()
         controller = c
         pad = ds
+        selectedControllerID = id
         updateInputActivity()
         updateTimerFrequency()
-        controllerName = c.vendorName ?? "DualSense"
+        controllerName = connectedControllers.first(where: { $0.id == id })?.name ?? c.vendorName ?? "DualSense"
         updateBattery()
 
-        bind(ds.buttonA, .cross)
-        bind(ds.buttonB, .circle)
-        bind(ds.buttonX, .square)
-        bind(ds.buttonY, .triangle)
-        bind(ds.leftShoulder, .l1)
-        bind(ds.rightShoulder, .r1)
-        bind(ds.leftTrigger, .l2)
-        bind(ds.rightTrigger, .r2)
-        bind(ds.leftThumbstickButton, .l3)
-        bind(ds.rightThumbstickButton, .r3)
-        bind(ds.dpad.up, .dpadUp)
-        bind(ds.dpad.down, .dpadDown)
-        bind(ds.dpad.left, .dpadLeft)
-        bind(ds.dpad.right, .dpadRight)
-        bind(ds.buttonMenu, .options)
-        bind(ds.buttonOptions, .create)
-        bind(ds.buttonHome, .ps)
-        bind(ds.touchpadButton, .touchpad)
+        bind(ds.buttonA, .cross, from: c)
+        bind(ds.buttonB, .circle, from: c)
+        bind(ds.buttonX, .square, from: c)
+        bind(ds.buttonY, .triangle, from: c)
+        bind(ds.leftShoulder, .l1, from: c)
+        bind(ds.rightShoulder, .r1, from: c)
+        bind(ds.leftTrigger, .l2, from: c)
+        bind(ds.rightTrigger, .r2, from: c)
+        bind(ds.leftThumbstickButton, .l3, from: c)
+        bind(ds.rightThumbstickButton, .r3, from: c)
+        bind(ds.dpad.up, .dpadUp, from: c)
+        bind(ds.dpad.down, .dpadDown, from: c)
+        bind(ds.dpad.left, .dpadLeft, from: c)
+        bind(ds.dpad.right, .dpadRight, from: c)
+        bind(ds.buttonMenu, .options, from: c)
+        bind(ds.buttonOptions, .create, from: c)
+        bind(ds.buttonHome, .ps, from: c)
+        bind(ds.touchpadButton, .touchpad, from: c)
 
         // Impede que o sistema "roube" esses botões (PS abre o Game Overlay, etc.).
         ds.buttonHome?.preferredSystemGestureState = .disabled
@@ -222,24 +244,47 @@ final class ControllerManager: ObservableObject {
         ds.buttonOptions?.preferredSystemGestureState = .disabled
 
         ds.touchpadPrimary.valueChangedHandler = { [weak self] _, x, y in
-            MainActor.assumeIsolated { self?.touchpadMoved(x: x, y: y) }
+            MainActor.assumeIsolated {
+                guard let self, self.controller === c else { return }
+                self.touchpadMoved(x: x, y: y)
+            }
         }
-
-        GCController.stopWirelessControllerDiscovery()
     }
 
     private func detach(_ c: GCController) {
-        guard c === controller else { return }
+        guard let index = controllers.firstIndex(where: { $0 === c }) else { return }
+        let wasSelected = c === controller
+        controllers.remove(at: index)
+        refreshConnectedControllers()
+        guard wasSelected else { return }
+
         releaseEverything()
         controller = nil
         pad = nil
+        selectedControllerID = nil
         updateInputActivity()
         controllerName = nil
         batteryText = nil
         batteryPercentage = nil
         testState.reset()
         updateTimerFrequency()
-        GCController.startWirelessControllerDiscovery(completionHandler: nil)
+
+        if let next = controllers.first {
+            selectController(ObjectIdentifier(next))
+        } else {
+            GCController.startWirelessControllerDiscovery(completionHandler: nil)
+        }
+    }
+
+    private func refreshConnectedControllers() {
+        var nameCounts: [String: Int] = [:]
+        connectedControllers = controllers.map { connectedController in
+            let baseName = connectedController.vendorName ?? "DualSense"
+            nameCounts[baseName, default: 0] += 1
+            let count = nameCounts[baseName, default: 1]
+            let displayName = count == 1 ? baseName : "\(baseName) \(count)"
+            return ConnectedControllerOption(id: ObjectIdentifier(connectedController), name: displayName)
+        }
     }
 
     private func updateBattery() {
@@ -271,9 +316,12 @@ final class ControllerManager: ObservableObject {
         }
     }
 
-    private func bind(_ button: GCControllerButtonInput?, _ id: PadButton) {
+    private func bind(_ button: GCControllerButtonInput?, _ id: PadButton, from source: GCController) {
         button?.pressedChangedHandler = { [weak self] _, _, pressed in
-            MainActor.assumeIsolated { self?.buttonChanged(id, pressed: pressed) }
+            MainActor.assumeIsolated {
+                guard self?.controller === source else { return }
+                self?.buttonChanged(id, pressed: pressed)
+            }
         }
     }
 
