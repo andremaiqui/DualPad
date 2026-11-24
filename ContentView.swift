@@ -83,13 +83,12 @@ private final class WindowLockView: NSView {
 }
 
 @MainActor
-private final class MenuBarController: NSObject, NSMenuDelegate {
+private final class MenuBarController: NSObject {
     static let shared = MenuBarController()
 
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-    private var manager: ControllerManager?
+    private let popover = NSPopover()
     private var openWindow: (() -> Void)?
-    private var activeControlItem: NSMenuItem?
 
     private override init() {
         super.init()
@@ -97,72 +96,220 @@ private final class MenuBarController: NSObject, NSMenuDelegate {
         if let button = statusItem.button {
             button.image = NSImage(systemSymbolName: "gamecontroller.fill", accessibilityDescription: "DualPad")
             button.image?.isTemplate = true
+            button.target = self
+            button.action = #selector(togglePopover(_:))
         }
-
-        let menu = NSMenu()
-        menu.delegate = self
-
-        let openItem = NSMenuItem(title: AppLanguage.text("Abrir DualPad"), action: #selector(openMainWindow), keyEquivalent: "")
-        openItem.target = self
-        menu.addItem(openItem)
-        menu.addItem(.separator())
-
-        let activeItem = NSMenuItem(title: AppLanguage.text("Controle ativo"), action: #selector(toggleControl), keyEquivalent: "")
-        activeItem.target = self
-        menu.addItem(activeItem)
-        activeControlItem = activeItem
-        menu.addItem(.separator())
-
-        let quitItem = NSMenuItem(title: AppLanguage.text("Sair do DualPad"), action: #selector(quit), keyEquivalent: "")
-        quitItem.target = self
-        menu.addItem(quitItem)
-
-        statusItem.menu = menu
+        popover.behavior = .transient
+        popover.animates = true
         statusItem.isVisible = false
     }
 
     func configure(manager: ControllerManager, isVisible: Bool, openWindow: @escaping () -> Void) {
-        self.manager = manager
         self.openWindow = openWindow
+        popover.contentSize = NSSize(width: 332, height: 460)
+        popover.contentViewController = NSHostingController(
+            rootView: MenuBarPopoverView(
+                manager: manager,
+                openMainWindow: { [weak self] in self?.openMainWindow() },
+                quit: { NSApp.terminate(nil) }
+            )
+        )
         statusItem.isVisible = isVisible
-        updateControlItem()
     }
 
     func setVisible(_ isVisible: Bool) {
         statusItem.isVisible = isVisible
     }
 
-    func menuNeedsUpdate(_ menu: NSMenu) {
-        refreshLanguage()
-        updateControlItem()
-    }
-
-    func refreshLanguage() {
-        guard let menu = statusItem.menu else { return }
-        if menu.items.indices.contains(0) { menu.items[0].title = AppLanguage.text("Abrir DualPad") }
-        if menu.items.indices.contains(2) { menu.items[2].title = AppLanguage.text("Controle ativo") }
-        if menu.items.indices.contains(4) { menu.items[4].title = AppLanguage.text("Sair do DualPad") }
+    @objc private func togglePopover(_ sender: NSStatusBarButton) {
+        if popover.isShown {
+            popover.performClose(nil)
+        } else {
+            popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
+        }
     }
 
     @objc private func openMainWindow() {
+        popover.performClose(nil)
         _ = NSApp.setActivationPolicy(.regular)
         openWindow?()
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    @objc private func toggleControl() {
-        guard let manager else { return }
-        manager.settings.enabled.toggle()
-        updateControlItem()
+}
+
+private struct MenuBarPopoverView: View {
+    @ObservedObject var manager: ControllerManager
+    @AppStorage(AppLanguage.preferenceKey) private var languageCode = "pt-BR"
+    let openMainWindow: () -> Void
+    let quit: () -> Void
+
+    private var isEnglish: Bool { languageCode == "en-US" }
+
+    var body: some View {
+        VStack(spacing: 14) {
+            MenuBarControllerSummary(
+                controllerName: manager.controllerName,
+                batteryText: manager.batteryText,
+                batteryPercentage: manager.batteryPercentage,
+                isEnglish: isEnglish
+            )
+            MenuBarPopoverActions(
+                manager: manager,
+                isEnglish: isEnglish,
+                openMainWindow: openMainWindow,
+                quit: quit
+            )
+        }
+        .padding(14)
+        .frame(width: 332)
+        .background(.ultraThinMaterial)
     }
 
-    @objc private func quit() {
-        NSApp.terminate(nil)
+}
+
+private struct MenuBarControllerSummary: View {
+    let controllerName: String?
+    let batteryText: String?
+    let batteryPercentage: Int?
+    let isEnglish: Bool
+
+    var body: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(controllerName == nil ? Color.secondary : Color.green)
+                    .frame(width: 8, height: 8)
+                Text(controllerName ?? (isEnglish ? "No controller connected" : "Nenhum controle conectado"))
+                    .font(.headline)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+
+            Image(nsImage: DualSenseImageAsset.image ?? NSImage())
+                .resizable()
+                .scaledToFit()
+                .frame(height: 150)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 4)
+                .accessibilityLabel(isEnglish ? "DualSense controller" : "Controle DualSense")
+
+            HStack(spacing: 8) {
+                Image(systemName: batterySymbol)
+                    .font(.title3)
+                    .foregroundStyle(batteryColor)
+                    .frame(width: 34, height: 34)
+                    .background(batteryColor.opacity(0.13), in: RoundedRectangle(cornerRadius: 11))
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(isEnglish ? "Battery" : "Bateria")
+                        .font(.subheadline.weight(.semibold))
+                    Text(batteryText ?? (controllerName == nil
+                         ? (isEnglish ? "Connect via Bluetooth or USB" : "Conecte via Bluetooth ou USB")
+                         : (isEnglish ? "Status unavailable" : "Status indisponível")))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 8)
+                if let percentage = batteryPercentage {
+                    Text("\(percentage)%")
+                        .font(.title3.weight(.semibold).monospacedDigit())
+                }
+            }
+            .padding(11)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        }
+        .padding(14)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 24))
     }
 
-    private func updateControlItem() {
-        activeControlItem?.title = AppLanguage.text("Controle ativo")
-        activeControlItem?.state = manager?.settings.enabled == true ? .on : .off
+    private var batterySymbol: String {
+        guard let batteryPercentage else { return "battery.0percent" }
+        switch batteryPercentage {
+        case 0..<25: return "battery.25percent"
+        case 25..<50: return "battery.50percent"
+        case 50..<75: return "battery.75percent"
+        default: return "battery.100percent"
+        }
+    }
+
+    private var batteryColor: Color {
+        guard let batteryPercentage else { return .secondary }
+        return batteryPercentage <= 20 ? .orange : .green
+    }
+}
+
+private struct MenuBarPopoverActions: View {
+    @ObservedObject var manager: ControllerManager
+    let isEnglish: Bool
+    let openMainWindow: () -> Void
+    let quit: () -> Void
+
+    var body: some View {
+        GlassEffectContainer(spacing: 12) {
+            VStack(spacing: 12) {
+                Button(action: openMainWindow) {
+                    MenuBarActionLabel(
+                        title: isEnglish ? "Open DualPad" : "Abrir DualPad",
+                        symbol: "macwindow"
+                    )
+                }
+                .buttonStyle(MenuBarGlassButtonStyle())
+
+                Button {
+                    manager.settings.enabled.toggle()
+                } label: {
+                    HStack(spacing: 10) {
+                        MenuBarActionLabel(
+                            title: isEnglish ? "Controller enabled" : "Controle ativo",
+                            symbol: "gamecontroller.fill"
+                        )
+                        Spacer(minLength: 0)
+                        Image(systemName: manager.settings.enabled ? "checkmark.circle.fill" : "circle")
+                            .font(.title3)
+                            .foregroundStyle(manager.settings.enabled ? Color.accentColor : Color.secondary)
+                    }
+                }
+                .buttonStyle(MenuBarGlassButtonStyle())
+
+                Button(action: quit) {
+                    MenuBarActionLabel(
+                        title: isEnglish ? "Quit DualPad" : "Sair do DualPad",
+                        symbol: "power"
+                    )
+                }
+                .buttonStyle(MenuBarGlassButtonStyle())
+            }
+        }
+    }
+}
+
+private struct MenuBarActionLabel: View {
+    let title: String
+    let symbol: String
+
+    var body: some View {
+        Label {
+            Text(title)
+                .foregroundStyle(.primary)
+        } icon: {
+            Image(systemName: symbol)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct MenuBarGlassButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, 14)
+            .frame(minHeight: 48)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .scaleEffect(configuration.isPressed ? 0.985 : 1)
+            .animation(.easeOut(duration: 0.16), value: configuration.isPressed)
     }
 }
 
@@ -212,7 +359,6 @@ struct ContentView: View {
         }
         .onChange(of: languageCode) { _, _ in
             pad.refreshLocalizedStrings()
-            MenuBarController.shared.refreshLanguage()
         }
         .onChange(of: backgroundMode) { _, isVisible in
             MenuBarController.shared.setVisible(isVisible)
