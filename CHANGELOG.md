@@ -2,6 +2,25 @@
 
 As alterações publicadas são agrupadas por versão e geradas automaticamente a partir dos commits convencionais. Consulte a página [Releases](https://github.com/andremaiqui/DualPad/releases) para baixar o app e ver as notas de cada versão.
 
+## [1.2.0](https://github.com/andremaiqui/DualPad/compare/v1.1.0...v1.2.0) (2026-11-24)
+
+### Novidades
+
+- Adicionado um popover na barra de menus com visual inspirado no Liquid Glass.
+- Exibidos a ilustração do DualSense, o estado da conexão e a porcentagem da bateria.
+- Incluídas ações rápidas para abrir a janela principal, ativar ou desativar o controle e encerrar o DualPad.
+
+### Melhorias
+
+- Refinado o popover com superfícies translúcidas, botões arredondados e apresentação adaptada aos modos claro e escuro.
+- Aplicado o azul de destaque aos ícones das três ações para melhorar sua visibilidade.
+- Fechado o popover ao clicar fora dele, evitando que permaneça sobre outros apps e janelas.
+- Adaptadas as informações de bateria e conexão para os estados conectado e desconectado.
+
+### Documentação
+
+- Atualizada a captura do README para mostrar a versão atual do app em execução.
+
 ## [1.1.0](https://github.com/andremaiqui/DualPad/compare/v1.0.0...v1.1.0) (2026-11-23)
 
 
