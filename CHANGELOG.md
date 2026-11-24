@@ -4,27 +4,22 @@ As alterações publicadas são agrupadas por versão e geradas automaticamente 
 
 ## [1.2.0](https://github.com/andremaiqui/DualPad/compare/v1.1.0...v1.2.0) (2026-11-24)
 
-
 ### Novidades
 
-* add glass controller menu bar popover ([8293d11](https://github.com/andremaiqui/DualPad/commit/8293d11aa61c2b10f0279f1bfdd832656923d0b1))
-* add Liquid Glass controller menu bar popover ([fb4cff4](https://github.com/andremaiqui/DualPad/commit/fb4cff4d22eee06887bbca8272946ebae3fd334c))
+- Adicionado um popover na barra de menus com visual inspirado no Liquid Glass.
+- Exibidos a ilustração do DualSense, o estado da conexão e a porcentagem da bateria.
+- Incluídas ações rápidas para abrir a janela principal, ativar ou desativar o controle e encerrar o DualPad.
 
+### Melhorias
 
-### Correções
-
-* dismiss menu bar popover on outside clicks ([f4da608](https://github.com/andremaiqui/DualPad/commit/f4da608ef3725c9a02cb0b3523f3ed80542baaf8))
-* dismiss menu bar popover on outside clicks ([d5a5f62](https://github.com/andremaiqui/DualPad/commit/d5a5f620a8166c7f477139d632fe8d407cf03da7))
-* improve menu bar action icon visibility ([665e744](https://github.com/andremaiqui/DualPad/commit/665e744e12ebafea6127b12c7e910b7d42b53bd2))
-* improve menu bar action icon visibility ([3dfe02e](https://github.com/andremaiqui/DualPad/commit/3dfe02e5c052ffaaa04fde1c0ca2c741a3f53769))
-
+- Refinado o popover com superfícies translúcidas, botões arredondados e apresentação adaptada aos modos claro e escuro.
+- Aplicado o azul de destaque aos ícones das três ações para melhorar sua visibilidade.
+- Fechado o popover ao clicar fora dele, evitando que permaneça sobre outros apps e janelas.
+- Adaptadas as informações de bateria e conexão para os estados conectado e desconectado.
 
 ### Documentação
 
-* refresh README screenshot ([f4bcbab](https://github.com/andremaiqui/DualPad/commit/f4bcbab9a4699962f023a5fb3cf7d7f9b38a9d05))
-* refresh README screenshot ([e5429f4](https://github.com/andremaiqui/DualPad/commit/e5429f44d6eec5157141d869c8aed1ad67733240))
-* update README app screenshot ([83611ac](https://github.com/andremaiqui/DualPad/commit/83611ac27a5fbfb27565f4262aaf345d0c579b1b))
-* update README app screenshot ([c9d26b3](https://github.com/andremaiqui/DualPad/commit/c9d26b35dc9060aed3cc1daf03afb489b54556fa))
+- Atualizada a captura do README para mostrar a versão atual do app em execução.
 
 ## [1.1.0](https://github.com/andremaiqui/DualPad/compare/v1.0.0...v1.1.0) (2026-11-23)
 
