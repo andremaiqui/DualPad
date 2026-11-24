@@ -89,6 +89,7 @@ private final class MenuBarController: NSObject {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let popover = NSPopover()
     private var openWindow: (() -> Void)?
+    private var outsideClickMonitor: Any?
 
     private override init() {
         super.init()
