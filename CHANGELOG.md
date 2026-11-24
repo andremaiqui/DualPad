@@ -7,7 +7,10 @@ As alterações publicadas são agrupadas por versão e geradas automaticamente 
 
 ### Novidades
 
-* add switching between connected DualSense controllers ([#14](https://github.com/andremaiqui/DualPad/issues/14)) ([91e1275](https://github.com/andremaiqui/DualPad/commit/91e1275b09f8c9394b28415e789ecdedb43bf8fd))
+* Alternância entre controles: escolha qual DualSense conectado será usado na janela principal ou no popover da barra de menus; o nome, a conexão e a bateria passam a refletir o controle selecionado. ([#14](https://github.com/andremaiqui/DualPad/issues/14))
+* Seletor flutuante na janela principal: a lista abre sobre o cartão de conexão sem deslocar ou redimensionar a interface, e usa fundo opaco para manter os nomes legíveis.
+* Estado do popover: a lista se fecha após a seleção e volta fechada quando o popover é dispensado e aberto novamente.
+* Ícone estável: a imagem do app é mantida em cache para evitar recriação e cintilação durante as atualizações de estado do controle.
 
 ## [1.2.0](https://github.com/andremaiqui/DualPad/compare/v1.1.0...v1.2.0) (2026-11-24)
 
