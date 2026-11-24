@@ -115,7 +115,7 @@ private final class MenuBarController: NSObject {
 
     func configure(manager: ControllerManager, isVisible: Bool, openWindow: @escaping () -> Void) {
         self.openWindow = openWindow
-        popover.contentSize = NSSize(width: 332, height: 460)
+        popover.contentSize = NSSize(width: 332, height: 540)
         popover.contentViewController = NSHostingController(
             rootView: MenuBarPopoverView(
                 manager: manager,
@@ -158,9 +158,7 @@ private struct MenuBarPopoverView: View {
     var body: some View {
         VStack(spacing: 14) {
             MenuBarControllerSummary(
-                controllerName: manager.controllerName,
-                batteryText: manager.batteryText,
-                batteryPercentage: manager.batteryPercentage,
+                manager: manager,
                 isEnglish: isEnglish
             )
             MenuBarPopoverActions(
@@ -178,21 +176,23 @@ private struct MenuBarPopoverView: View {
 }
 
 private struct MenuBarControllerSummary: View {
-    let controllerName: String?
-    let batteryText: String?
-    let batteryPercentage: Int?
+    @ObservedObject var manager: ControllerManager
     let isEnglish: Bool
+    @State private var isControllerPickerExpanded = false
+
+    private var controllerName: String? { manager.controllerName }
+    private var batteryText: String? { manager.batteryText }
+    private var batteryPercentage: Int? { manager.batteryPercentage }
+    private var hasMultipleControllers: Bool { manager.connectedControllers.count > 1 }
 
     var body: some View {
         VStack(spacing: 10) {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(controllerName == nil ? Color.secondary : Color.green)
-                    .frame(width: 8, height: 8)
-                Text(controllerName ?? (isEnglish ? "No controller connected" : "Nenhum controle conectado"))
-                    .font(.headline)
-                    .lineLimit(1)
-                Spacer(minLength: 0)
+            controllerHeader
+
+            if isControllerPickerExpanded && hasMultipleControllers {
+                ControllerSelectionList(manager: manager) {
+                    isControllerPickerExpanded = false
+                }
             }
 
             Image(nsImage: DualSenseImageAsset.image ?? NSImage())
@@ -230,6 +230,50 @@ private struct MenuBarControllerSummary: View {
         }
         .padding(14)
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 24))
+        .onDisappear {
+            isControllerPickerExpanded = false
+        }
+    }
+
+    private var controllerHeader: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.18)) {
+                isControllerPickerExpanded.toggle()
+            }
+        } label: {
+            Group {
+                if controllerName == nil {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(Color.secondary)
+                            .frame(width: 8, height: 8)
+                        Text(isEnglish ? "No controller connected" : "Nenhum controle conectado")
+                            .font(.headline)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                } else {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 8, height: 8)
+                        Text(controllerName ?? "")
+                            .font(.headline)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                        if hasMultipleControllers {
+                            Image(systemName: "chevron.down")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .rotationEffect(.degrees(isControllerPickerExpanded ? 180 : 0))
+                        }
+                    }
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!hasMultipleControllers)
     }
 
     private var batterySymbol: String {
@@ -245,6 +289,55 @@ private struct MenuBarControllerSummary: View {
     private var batteryColor: Color {
         guard let batteryPercentage else { return .secondary }
         return batteryPercentage <= 20 ? .orange : .green
+    }
+}
+
+private struct ControllerSelectionList: View {
+    @ObservedObject var manager: ControllerManager
+    var onSelect: () -> Void = {}
+
+    var body: some View {
+        VStack(spacing: 4) {
+            ForEach(manager.connectedControllers) { controller in
+                Button {
+                    manager.selectController(controller.id)
+                    onSelect()
+                } label: {
+                    HStack(spacing: 8) {
+                        Text(controller.name)
+                            .lineLimit(1)
+                        Spacer(minLength: 4)
+                        if manager.selectedControllerID == controller.id {
+                            Image(systemName: "checkmark")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Color.accentColor)
+                        }
+                    }
+                    .font(.subheadline)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .background(
+                        manager.selectedControllerID == controller.id ? Color.accentColor.opacity(0.12) : Color.clear,
+                        in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(manager.selectedControllerID == controller.id ? .isSelected : [])
+            }
+        }
+        .padding(5)
+        // Keep the floating selector opaque so controls underneath never show through its rows.
+        .background(
+            Color(nsColor: .windowBackgroundColor),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.10), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.18), radius: 12, y: 5)
+        .transition(.opacity.combined(with: .move(edge: .top)))
     }
 }
 
@@ -331,11 +424,16 @@ private enum DualSenseImageAsset {
     }()
 }
 
+private enum DualPadAppIconAsset {
+    static let image = NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath)
+}
+
 struct ContentView: View {
     @EnvironmentObject private var pad: ControllerManager
     @Environment(\.openWindow) private var openWindow
     @AppStorage("dualpad.backgroundMode") private var backgroundMode = true
     @AppStorage(AppLanguage.preferenceKey) private var languageCode = "pt-BR"
+    @State private var isControllerPickerExpanded = false
 
     private let accent = Color.accentColor
 
@@ -415,7 +513,7 @@ struct ContentView: View {
 
     private var brand: some View {
         HStack(spacing: 14) {
-            Image(nsImage: NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath))
+            Image(nsImage: DualPadAppIconAsset.image)
                 .resizable()
                 .scaledToFit()
                 .frame(width: 46, height: 46)
@@ -432,22 +530,48 @@ struct ContentView: View {
     }
 
     private var connectionBadge: some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(pad.controllerName == nil ? Color.orange : Color.green)
-                .frame(width: 8, height: 8)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(pad.controllerName ?? AppLanguage.text("Nenhum controle conectado"))
-                    .font(.system(size: 13, weight: .semibold))
-                    .lineLimit(1)
-                Text(pad.batteryText.map { "\(AppLanguage.text("Bateria")) \($0)" } ?? (pad.controllerName == nil ? AppLanguage.text("Conecte via Bluetooth ou USB") : AppLanguage.text("Conectado")))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+        Button {
+            withAnimation(.easeInOut(duration: 0.18)) {
+                isControllerPickerExpanded.toggle()
             }
-            Spacer(minLength: 0)
+        } label: {
+            HStack(spacing: 10) {
+                Circle()
+                    .fill(pad.controllerName == nil ? Color.orange : Color.green)
+                    .frame(width: 8, height: 8)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(pad.controllerName ?? AppLanguage.text("Nenhum controle conectado"))
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                    Text(pad.batteryText.map { "\(AppLanguage.text("Bateria")) \($0)" } ?? (pad.controllerName == nil ? AppLanguage.text("Conecte via Bluetooth ou USB") : AppLanguage.text("Conectado")))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                if pad.connectedControllers.count > 1 {
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(isControllerPickerExpanded ? 180 : 0))
+                }
+            }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .disabled(pad.connectedControllers.count < 2)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .topLeading) {
+            if isControllerPickerExpanded && pad.connectedControllers.count > 1 {
+                ControllerSelectionList(manager: pad) {
+                    isControllerPickerExpanded = false
+                }
+                .frame(maxWidth: .infinity)
+                .offset(y: 42)
+                .zIndex(5)
+            }
+        }
+        .zIndex(isControllerPickerExpanded ? 5 : 0)
     }
 
     private var backgroundModeToggle: some View {
@@ -491,6 +615,7 @@ struct ContentView: View {
             RoundedRectangle(cornerRadius: 24)
                 .strokeBorder(Color.primary.opacity(0.07), lineWidth: 1)
         }
+        .zIndex(isControllerPickerExpanded ? 2 : 0)
     }
 
     private var leftColumn: some View {
