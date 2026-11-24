@@ -294,7 +294,7 @@ private struct MenuBarActionLabel: View {
                 .foregroundStyle(.primary)
         } icon: {
             Image(systemName: symbol)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.accentColor)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
