@@ -78,6 +78,7 @@ final class ControllerManager: ObservableObject {
 
     @Published var controllerName: String?
     @Published var batteryText: String?
+    @Published var batteryPercentage: Int?
     @Published var accessibilityGranted = AXIsProcessTrusted()
     @Published var lastPressed = "—"
     let testState = ControllerTestState()
@@ -235,14 +236,20 @@ final class ControllerManager: ObservableObject {
         updateInputActivity()
         controllerName = nil
         batteryText = nil
+        batteryPercentage = nil
         testState.reset()
         updateTimerFrequency()
         GCController.startWirelessControllerDiscovery(completionHandler: nil)
     }
 
     private func updateBattery() {
-        guard let b = controller?.battery else { batteryText = nil; return }
+        guard let b = controller?.battery else {
+            batteryText = nil
+            batteryPercentage = nil
+            return
+        }
         let pct = Int((b.batteryLevel * 100).rounded())
+        batteryPercentage = pct
         switch b.batteryState {
         case .charging: batteryText = "\(pct)% (\(AppLanguage.text("carregando")))"
         case .full: batteryText = "100%"
